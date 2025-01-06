@@ -1,0 +1,12 @@
+{
+  "name": "ecommerce-analytics",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "cubejs-server"
+  },
+  "dependencies": {
+    "@cubejs-backend/server": "^0.34.0",
+    "@cubejs-backend/sqlite-driver": "^0.34.0"
+  }
+}
