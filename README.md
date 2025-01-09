@@ -1,6 +1,6 @@
 # E-commerce Analytics with dbt and Cube.js
 
-This is a sample project demonstrating the integration of dbt and Cube.js for analytics using SQLite as the database.
+This is a sample project demonstrating the integration of dbt and Cube.js for analytics using SQLite as the database. It highlights the power of Cube.js.
 
 ## Project Structure
 
