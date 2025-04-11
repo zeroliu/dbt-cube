@@ -8,5 +8,10 @@
   "dependencies": {
     "@cubejs-backend/server": "^0.34.0",
     "@cubejs-backend/sqlite-driver": "^0.34.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
   }
 }
