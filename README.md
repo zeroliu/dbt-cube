@@ -1,10 +1,10 @@
-# E-commerce Analytics with dbt and Cube.js
+# SaaS Management Analytics with dbt and Cube.js
 
-This is a sample project demonstrating the integration of dbt and Cube.js for analytics using SQLite as the database. It highlights the power of Cube.js.
+This is a sample project demonstrating the integration of dbt and Cube.js for SaaS management analytics using SQLite as the database. It highlights the power of Cube.js for SaaS spend optimization and license management.
 
 ## Project Structure
 
-- `generate_data.py`: Script to generate sample e-commerce data
+- `generate_data.py`: Script to generate sample SaaS management data
 - `dbt/`: Contains dbt models and configurations
 - `schema/`: Contains Cube.js schema definitions
 - `raw_data.db`: SQLite database with raw data
@@ -46,31 +46,34 @@ npm run dev
 
 The project includes:
 
-### Raw Tables
+### Dimension Tables
 
-- `raw_customers`: Customer information
-- `raw_products`: Product catalog
-- `raw_orders`: Order transactions
+- `dim_departments`: Business departments/cost centers
+- `dim_users`: Employee and system user information
+- `dim_applications`: Software application portfolio
 
-### dbt Models
+### Fact Tables
 
-- Staging models: Clean and standardize raw data
-- Mart models: Create fact and dimension tables
+- `fact_license_assignments`: Software licenses assigned to users
+- `fact_usage_activity`: User activity events for applications
 
 ### Cube.js Schema
 
-- `Orders`: Order analysis with customer and product relationships
-- `Customers`: Customer demographics and metrics
-- `Products`: Product catalog and pricing analysis
+- `Departments`: Department and cost center analysis
+- `Users`: User demographics and metrics
+- `Applications`: Application portfolio analysis
+- `LicenseAssignments`: License utilization and cost analysis
+- `UsageActivity`: User activity patterns and engagement
 
 ## Example Queries
 
 You can use the Cube.js Playground to explore the data. Here are some example queries:
 
-1. Total sales by month
-2. Top customers by order value
-3. Product category performance
-4. Order status distribution
+1. License utilization rate by application
+2. Estimated wasted spend on inactive licenses
+3. High-risk shadow IT applications
+4. Redundant applications by category
+5. Application usage trends by department
 
 ## Development
 
