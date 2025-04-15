@@ -1,14 +1,32 @@
 'use client';
 
 import {useState, useEffect} from 'react';
-import {Widget} from '@/lib/cube-client';
+import {Widget, fetchCubeMetadata, CubeMetadata} from '@/lib/cube-client';
 import WidgetBuilder from '@/components/dashboard/widget-builder';
 import WidgetRenderer from '@/components/dashboard/widget-renderer';
+import WidgetEditor from '@/components/dashboard/widget-editor';
+import AIChartGenerator from '@/components/dashboard/ai-chart-generator';
 import {cubejsApi} from '@/lib/cube-client';
 import {CubeProvider} from '@cubejs-client/react';
 
 export default function Home() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [cubeMetadata, setCubeMetadata] = useState<CubeMetadata | null>(null);
+  const [editingWidget, setEditingWidget] = useState<Widget | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  // Load cube metadata on mount
+  useEffect(() => {
+    async function loadMetadata() {
+      try {
+        const metadata = await fetchCubeMetadata();
+        setCubeMetadata(metadata);
+      } catch (error) {
+        console.error('Failed to fetch cube metadata', error);
+      }
+    }
+    loadMetadata();
+  }, []);
 
   // Load widgets from localStorage on mount
   useEffect(() => {
@@ -35,6 +53,20 @@ export default function Home() {
     setWidgets(widgets.filter((widget) => widget.id !== id));
   };
 
+  const handleEditWidget = (widget: Widget) => {
+    setEditingWidget(widget);
+    setIsEditorOpen(true);
+  };
+
+  const handleUpdateWidget = (updatedWidget: Widget) => {
+    setWidgets(
+      widgets.map((widget) =>
+        widget.id === updatedWidget.id ? updatedWidget : widget
+      )
+    );
+    setEditingWidget(null);
+  };
+
   return (
     <CubeProvider cubeApi={cubejsApi}>
       <div className="min-h-screen p-8">
@@ -43,8 +75,14 @@ export default function Home() {
           <p className="text-gray-500">Create and customize your insights</p>
         </header>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-3">
           <WidgetBuilder onWidgetCreate={handleAddWidget} />
+          {cubeMetadata && (
+            <AIChartGenerator
+              cubeMetadata={cubeMetadata}
+              onWidgetCreate={handleAddWidget}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -53,6 +91,7 @@ export default function Home() {
               key={widget.id}
               widget={widget}
               onRemove={handleRemoveWidget}
+              onEdit={handleEditWidget}
             />
           ))}
           {widgets.length === 0 && (
@@ -62,11 +101,20 @@ export default function Home() {
               </p>
               <p className="text-gray-500 mb-4">
                 Click the &quot;Add Widget&quot; button to create your first
-                visualization
+                visualization or ask AI to generate charts for you
               </p>
             </div>
           )}
         </div>
+
+        {editingWidget && (
+          <WidgetEditor
+            widget={editingWidget}
+            open={isEditorOpen}
+            onOpenChange={setIsEditorOpen}
+            onWidgetUpdate={handleUpdateWidget}
+          />
+        )}
       </div>
     </CubeProvider>
   );
