@@ -43,6 +43,16 @@ export default function WidgetEditor({
   const [selectedDimensions, setSelectedDimensions] = useState<string[]>(
     widget.dimensions
   );
+  const [selectedSegments, setSelectedSegments] = useState<string[]>(
+    widget.segments || []
+  );
+  const [selectedFilters, setSelectedFilters] = useState<
+    Array<{
+      member: string;
+      operator: string;
+      values: string[];
+    }>
+  >(widget.filters || []);
   const [title, setTitle] = useState(widget.title);
 
   // Reset form when widget changes
@@ -51,6 +61,8 @@ export default function WidgetEditor({
     setSelectedCube(widget.cubeName);
     setSelectedMeasures(widget.measures);
     setSelectedDimensions(widget.dimensions);
+    setSelectedSegments(widget.segments || []);
+    setSelectedFilters(widget.filters || []);
     setTitle(widget.title);
   }, [widget]);
 
@@ -66,6 +78,20 @@ export default function WidgetEditor({
     loadMetadata();
   }, []);
 
+  // Strip cube name from titles (e.g., "Domain Applications Count" -> "Count")
+  const stripCubeTitle = (title: string, cubeName: string): string => {
+    // Find the cube title to remove from the measure/dimension title
+    const cubeTitle =
+      cubeMetadata?.cubes.find((cube) => cube.name === cubeName)?.title || '';
+
+    // Remove the cube title prefix from the measure/dimension title
+    if (cubeTitle && title.startsWith(cubeTitle)) {
+      return title.substring(cubeTitle.length).trim();
+    }
+
+    return title;
+  };
+
   const handleUpdateWidget = () => {
     if (!selectedCube || !chartType || !title) return;
 
@@ -76,6 +102,8 @@ export default function WidgetEditor({
       cubeName: selectedCube,
       measures: selectedMeasures,
       dimensions: selectedDimensions,
+      filters: selectedFilters,
+      segments: selectedSegments,
     };
 
     onWidgetUpdate(updatedWidget);
@@ -86,6 +114,8 @@ export default function WidgetEditor({
     setSelectedCube(cube);
     setSelectedMeasures([]);
     setSelectedDimensions([]);
+    setSelectedSegments([]);
+    setSelectedFilters([]);
   };
 
   const handleSelectMeasure = (measure: string) => {
@@ -104,9 +134,46 @@ export default function WidgetEditor({
     }
   };
 
+  const handleSelectSegment = (segment: string) => {
+    if (selectedSegments.includes(segment)) {
+      setSelectedSegments(selectedSegments.filter((s) => s !== segment));
+    } else {
+      setSelectedSegments([...selectedSegments, segment]);
+    }
+  };
+
+  const handleAddFilter = (member: string) => {
+    setSelectedFilters([
+      ...selectedFilters,
+      {
+        member,
+        operator: 'equals',
+        values: [],
+      },
+    ]);
+  };
+
+  const handleRemoveFilter = (index: number) => {
+    const newFilters = [...selectedFilters];
+    newFilters.splice(index, 1);
+    setSelectedFilters(newFilters);
+  };
+
+  const handleUpdateFilterOperator = (index: number, operator: string) => {
+    const newFilters = [...selectedFilters];
+    newFilters[index].operator = operator;
+    setSelectedFilters(newFilters);
+  };
+
+  const handleUpdateFilterValues = (index: number, values: string[]) => {
+    const newFilters = [...selectedFilters];
+    newFilters[index].values = values;
+    setSelectedFilters(newFilters);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Widget</DialogTitle>
         </DialogHeader>
@@ -139,6 +206,7 @@ export default function WidgetEditor({
                 <SelectItem value="line">Line Chart</SelectItem>
                 <SelectItem value="bar">Bar Chart</SelectItem>
                 <SelectItem value="pie">Pie Chart</SelectItem>
+                <SelectItem value="table">Table</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -165,7 +233,7 @@ export default function WidgetEditor({
             <>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Measures</label>
-                <div className="flex flex-wrap gap-2 border rounded-md p-2">
+                <div className="flex flex-wrap gap-2 border rounded-md p-2 max-h-[200px] overflow-y-auto">
                   {cubeMetadata?.cubes
                     .find((cube) => cube.name === selectedCube)
                     ?.measures.map((measure) => (
@@ -177,7 +245,7 @@ export default function WidgetEditor({
                             : 'bg-secondary text-secondary-foreground'
                         }`}
                         onClick={() => handleSelectMeasure(measure.name)}>
-                        {measure.title}
+                        {stripCubeTitle(measure.title, selectedCube)}
                       </div>
                     ))}
                 </div>
@@ -185,7 +253,7 @@ export default function WidgetEditor({
 
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Dimensions</label>
-                <div className="flex flex-wrap gap-2 border rounded-md p-2">
+                <div className="flex flex-wrap gap-2 border rounded-md p-2 max-h-[200px] overflow-y-auto">
                   {cubeMetadata?.cubes
                     .find((cube) => cube.name === selectedCube)
                     ?.dimensions.map((dimension) => (
@@ -197,9 +265,111 @@ export default function WidgetEditor({
                             : 'bg-secondary text-secondary-foreground'
                         }`}
                         onClick={() => handleSelectDimension(dimension.name)}>
-                        {dimension.title}
+                        {stripCubeTitle(dimension.title, selectedCube)}
                       </div>
                     ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Segments</label>
+                <div className="flex flex-wrap gap-2 border rounded-md p-2 max-h-[200px] overflow-y-auto">
+                  {cubeMetadata?.cubes
+                    .find((cube) => cube.name === selectedCube)
+                    ?.segments.map((segment) => (
+                      <div
+                        key={segment.name}
+                        className={`cursor-pointer rounded-full px-3 py-1 text-xs ${
+                          selectedSegments.includes(segment.name)
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground'
+                        }`}
+                        onClick={() => handleSelectSegment(segment.name)}>
+                        {stripCubeTitle(segment.title, selectedCube)}
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Filters</label>
+                <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto">
+                  {selectedFilters.map((filter, index) => (
+                    <div key={index} className="flex items-center gap-2 mb-2">
+                      <div className="bg-secondary rounded-md px-2 py-1 text-xs">
+                        {stripCubeTitle(
+                          cubeMetadata?.cubes
+                            .find((cube) => cube.name === selectedCube)
+                            ?.dimensions.find((d) => d.name === filter.member)
+                            ?.title ||
+                            cubeMetadata?.cubes
+                              .find((cube) => cube.name === selectedCube)
+                              ?.measures.find((m) => m.name === filter.member)
+                              ?.title ||
+                            filter.member,
+                          selectedCube
+                        )}
+                      </div>
+                      <Select
+                        value={filter.operator}
+                        onValueChange={(value) =>
+                          handleUpdateFilterOperator(index, value)
+                        }>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue placeholder="Operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">equals</SelectItem>
+                          <SelectItem value="notEquals">not equals</SelectItem>
+                          <SelectItem value="contains">contains</SelectItem>
+                          <SelectItem value="gt">greater than</SelectItem>
+                          <SelectItem value="lt">less than</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <input
+                        className="flex h-8 rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background"
+                        placeholder="Value"
+                        value={filter.values.join(',')}
+                        onChange={(e) =>
+                          handleUpdateFilterValues(
+                            index,
+                            e.target.value.split(',')
+                          )
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveFilter(index)}>
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="mt-2">
+                    <p className="text-xs mb-1">Add filter by:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {cubeMetadata?.cubes
+                        .find((cube) => cube.name === selectedCube)
+                        ?.dimensions.map((dimension) => (
+                          <div
+                            key={dimension.name}
+                            className="cursor-pointer rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs"
+                            onClick={() => handleAddFilter(dimension.name)}>
+                            {stripCubeTitle(dimension.title, selectedCube)}
+                          </div>
+                        ))}
+                      {cubeMetadata?.cubes
+                        .find((cube) => cube.name === selectedCube)
+                        ?.measures.map((measure) => (
+                          <div
+                            key={measure.name}
+                            className="cursor-pointer rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs"
+                            onClick={() => handleAddFilter(measure.name)}>
+                            {stripCubeTitle(measure.title, selectedCube)}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>

@@ -22,6 +22,7 @@ interface OpenAIChartResponse {
   cubeName: string;
   measures: string[];
   dimensions: string[];
+  segments: string[];
   filters: Array<{
     member: string;
     operator: string;
@@ -181,6 +182,10 @@ IMPORTANT REQUIREMENTS:
                       type: 'array',
                       items: {type: 'string'},
                     },
+                    segments: {
+                      type: 'array',
+                      items: {type: 'string'},
+                    },
                     filters: {
                       type: 'array',
                       items: {
@@ -234,6 +239,7 @@ IMPORTANT REQUIREMENTS:
         measures: chart.measures,
         dimensions: chart.dimensions,
         filters: chart.filters,
+        segments: chart.segments,
       },
       explanation: chart.explanation,
     }));

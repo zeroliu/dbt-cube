@@ -1,20 +1,32 @@
 import React from 'react';
 import {useCubeQuery} from '@cubejs-client/react';
 import {cubejsApi} from '@/lib/cube-client';
+import {Filter, formatFilters} from '@/lib/filter-utils';
 
 interface KpiChartProps {
   measure: string;
   title: string;
+  filters?: Filter[];
+  segments?: string[];
 }
 
-export default function KpiChart({measure, title}: KpiChartProps) {
+export default function KpiChart({
+  measure,
+  title,
+  filters = [],
+  segments = [],
+}: KpiChartProps) {
+  // Convert our filter format to CubeJS filter format
+  const cubeFilters = formatFilters(filters);
+
   const {resultSet, isLoading, error} = useCubeQuery(
     {
       measures: [measure],
       timeDimensions: [],
       order: {},
       dimensions: [],
-      filters: [],
+      filters: cubeFilters,
+      segments: segments,
     },
     {cubeApi: cubejsApi}
   );

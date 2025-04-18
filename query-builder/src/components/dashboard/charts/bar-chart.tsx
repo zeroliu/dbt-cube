@@ -1,6 +1,7 @@
 import React from 'react';
 import {useCubeQuery} from '@cubejs-client/react';
 import {cubejsApi} from '@/lib/cube-client';
+import {Filter, formatFilters} from '@/lib/filter-utils';
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -16,6 +17,8 @@ interface BarChartProps {
   measures: string[];
   dimension: string;
   title: string;
+  filters?: Filter[];
+  segments?: string[];
 }
 
 const COLORS = [
@@ -27,14 +30,24 @@ const COLORS = [
   '#00C49F',
 ];
 
-export default function BarChart({measures, dimension, title}: BarChartProps) {
+export default function BarChart({
+  measures,
+  dimension,
+  title,
+  filters = [],
+  segments = [],
+}: BarChartProps) {
+  // Convert our filter format to CubeJS filter format
+  const cubeFilters = formatFilters(filters);
+
   const {resultSet, isLoading, error} = useCubeQuery(
     {
       measures: measures,
       timeDimensions: [],
       order: {},
       dimensions: [dimension],
-      filters: [],
+      filters: cubeFilters,
+      segments: segments,
     },
     {cubeApi: cubejsApi}
   );

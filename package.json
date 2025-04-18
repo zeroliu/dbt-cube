@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "cubejs-server"
   },
-  "dependencies": {
-    "@cubejs-backend/server": "^0.34.0",
-    "@cubejs-backend/sqlite-driver": "^0.34.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@cubejs-backend/server": "^1.3.5",
+    "@cubejs-backend/sqlite-driver": "^1.3.5",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17"

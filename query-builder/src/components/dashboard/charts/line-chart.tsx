@@ -1,6 +1,7 @@
 import React from 'react';
 import {useCubeQuery} from '@cubejs-client/react';
 import {cubejsApi} from '@/lib/cube-client';
+import {Filter, formatFilters} from '@/lib/filter-utils';
 import {
   LineChart as RechartsLineChart,
   Line,
@@ -16,6 +17,8 @@ interface LineChartProps {
   measures: string[];
   dimension: string;
   title: string;
+  filters?: Filter[];
+  segments?: string[];
 }
 
 const COLORS = [
@@ -31,14 +34,20 @@ export default function LineChart({
   measures,
   dimension,
   title,
+  filters = [],
+  segments = [],
 }: LineChartProps) {
+  // Convert our filter format to CubeJS filter format
+  const cubeFilters = formatFilters(filters);
+
   const {resultSet, isLoading, error} = useCubeQuery(
     {
       measures: measures,
       timeDimensions: [],
       order: {},
       dimensions: [dimension],
-      filters: [],
+      filters: cubeFilters,
+      segments: segments,
     },
     {cubeApi: cubejsApi}
   );

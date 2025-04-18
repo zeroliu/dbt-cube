@@ -1,6 +1,7 @@
 import React from 'react';
 import {useCubeQuery} from '@cubejs-client/react';
 import {cubejsApi} from '@/lib/cube-client';
+import {Filter, formatFilters} from '@/lib/filter-utils';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -14,6 +15,8 @@ interface PieChartProps {
   measure: string;
   dimension: string;
   title: string;
+  filters?: Filter[];
+  segments?: string[];
 }
 
 const COLORS = [
@@ -27,14 +30,24 @@ const COLORS = [
   '#FF8042',
 ];
 
-export default function PieChart({measure, dimension, title}: PieChartProps) {
+export default function PieChart({
+  measure,
+  dimension,
+  title,
+  filters = [],
+  segments = [],
+}: PieChartProps) {
+  // Convert our filter format to CubeJS filter format
+  const cubeFilters = formatFilters(filters);
+
   const {resultSet, isLoading, error} = useCubeQuery(
     {
       measures: [measure],
       timeDimensions: [],
       order: {},
       dimensions: [dimension],
-      filters: [],
+      filters: cubeFilters,
+      segments: segments,
     },
     {cubeApi: cubejsApi}
   );

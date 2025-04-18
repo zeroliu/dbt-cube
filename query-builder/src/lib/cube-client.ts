@@ -45,7 +45,7 @@ export interface CubeMetadata {
   }[];
 }
 
-export type ChartType = 'kpi' | 'line' | 'bar' | 'pie';
+export type ChartType = 'kpi' | 'line' | 'bar' | 'pie' | 'table';
 
 export interface Widget {
   id: string;
@@ -59,8 +59,9 @@ export interface Widget {
     operator: string;
     values: string[];
   }>;
+  segments: string[];
 }
 
 export async function fetchCubeMetadata(): Promise<CubeMetadata> {
-  return await cubejsApi.meta();
+  return (await cubejsApi.meta()) as unknown as CubeMetadata;
 }

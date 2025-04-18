@@ -4,6 +4,7 @@ import KpiChart from './charts/kpi-chart';
 import LineChart from './charts/line-chart';
 import BarChart from './charts/bar-chart';
 import PieChart from './charts/pie-chart';
+import TableChart from './charts/table-chart';
 
 interface WidgetRendererProps {
   widget: Widget;
@@ -17,17 +18,26 @@ export default function WidgetRenderer({
   onEdit,
 }: WidgetRendererProps) {
   const renderChart = () => {
-    const {chartType, measures, dimensions, title} = widget;
+    const {chartType, measures, dimensions, title, filters, segments} = widget;
 
     switch (chartType) {
       case 'kpi':
-        return <KpiChart measure={measures[0]} title={title} />;
+        return (
+          <KpiChart
+            measure={measures[0]}
+            title={title}
+            filters={filters}
+            segments={segments}
+          />
+        );
       case 'line':
         return (
           <LineChart
             measures={measures}
             dimension={dimensions[0]}
             title={title}
+            filters={filters}
+            segments={segments}
           />
         );
       case 'bar':
@@ -36,6 +46,8 @@ export default function WidgetRenderer({
             measures={measures}
             dimension={dimensions[0]}
             title={title}
+            filters={filters}
+            segments={segments}
           />
         );
       case 'pie':
@@ -44,6 +56,18 @@ export default function WidgetRenderer({
             measure={measures[0]}
             dimension={dimensions[0]}
             title={title}
+            filters={filters}
+            segments={segments}
+          />
+        );
+      case 'table':
+        return (
+          <TableChart
+            measures={measures}
+            dimensions={dimensions}
+            title={title}
+            filters={filters}
+            segments={segments}
           />
         );
       default:
