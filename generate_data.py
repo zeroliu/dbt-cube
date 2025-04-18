@@ -245,6 +245,23 @@ def generate_contract_licenses(domain_applications_df, n=200):
             cost_per_license = random.uniform(200, 800)
             purchased_quantity = max(int(base_users * 0.4), 5)  # Fewer needed
 
+        # Calculate used quantity based on active users with some randomness
+        # For seat licenses, it's related to active users
+        if license_type == 'SEAT_LICENSE':
+            active_users = domain_app['num_users_with_active_status']
+            # Sometimes we use more than purchased (overuse), sometimes less (underuse)
+            usage_ratio = random.uniform(0.7, 1.1)
+            used_quantity = int(active_users * usage_ratio)
+        elif license_type == 'USAGE_BASED':
+            # Usage based licenses often have different utilization patterns
+            used_quantity = int(purchased_quantity * random.uniform(0.4, 0.95))
+        elif license_type == 'SITE_LICENSE':
+            # Site licenses are fully used since they cover the whole org
+            used_quantity = 1
+        else:  # CONCURRENT_LICENSE
+            # Concurrent licenses usually have a higher utilization rate
+            used_quantity = int(purchased_quantity * random.uniform(0.6, 0.95))
+
         pay_period = random.choice(pay_periods)
 
         # Adjust cost based on payment period
@@ -271,6 +288,7 @@ def generate_contract_licenses(domain_applications_df, n=200):
             'start_date': contract['start_date'].isoformat(),
             'end_date': contract['end_date'].isoformat(),
             'purchased_quantity': purchased_quantity,
+            'used_quantity': used_quantity,
             'total_cost': round(total_cost, 2),
             'cost_per_license_annual': round(cost_per_license_annual, 2)
         })

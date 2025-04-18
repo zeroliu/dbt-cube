@@ -10,6 +10,10 @@ cube('Accounts', {
       sql: `${CUBE}.domain_app_id = ${DomainApplications}.domain_app_id`,
       relationship: `belongsTo`,
     },
+    ContractLicenses: {
+      sql: `${CUBE}.domain_app_id = ${ContractLicenses}.domain_app_id`,
+      relationship: `hasMany`,
+    },
     // Applications: { // Optional direct join if needed frequently without DomainApplications
     //   sql: `${DomainApplications.appId} = ${Applications.appId}`, // Requires joining through DomainApplications first in Cube
     //   relationship: `belongsTo`
@@ -38,6 +42,26 @@ cube('Accounts', {
       type: `count`,
       filters: [{sql: `${CUBE}.is_dormant = TRUE`}], // Requires is_dormant flag from DBT
       title: `Dormant Accounts`,
+    },
+    // Total inactive licenses attributed to this team (through their application usage)
+    inactiveLicensesByTeam: {
+      type: `sum`,
+      sql: `CASE
+              WHEN ${ContractLicenses.purchasedQuantity} > ${ContractLicenses.usedQuantity}
+              THEN (${ContractLicenses.purchasedQuantity} - ${ContractLicenses.usedQuantity})
+              ELSE 0
+            END *
+            (${CUBE.activeAccountCount} / NULLIF(${DomainApplications.activeAccountsCount}, 0))`,
+      title: `Inactive Licenses by Team`,
+      description: `Inactive licenses attributed to teams based on their proportion of app usage`,
+    },
+    // Cost of inactive licenses by team
+    inactiveLicenseCostByTeam: {
+      type: `sum`,
+      sql: `${ContractLicenses.unusedLicenseCost} *
+            (${CUBE.activeAccountCount} / NULLIF(${DomainApplications.activeAccountsCount}, 0))`,
+      format: `currency`,
+      title: `Inactive License Cost by Team`,
     },
   },
 

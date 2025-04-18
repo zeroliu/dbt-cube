@@ -2,8 +2,6 @@ cube('ContractLicenses', {
   sqlTable: `fct_contract_licenses`, // Direct table name instead of DBT ref
 
   joins: {
-    // Join to Contracts dimension if needed
-    // Contracts: { ... }
     DomainApplications: {
       sql: `${CUBE}.domain_app_id = ${DomainApplications}.domain_app_id`,
       relationship: `belongsTo`,
@@ -17,7 +15,7 @@ cube('ContractLicenses', {
       type: `sum`,
       title: 'Total Purchased Licenses',
     },
-    totalContractCost: {
+    totalLicenseCost: {
       sql: `total_cost`, // Cost for the line item/order period
       type: `sum`,
       format: `currency`,
@@ -32,12 +30,32 @@ cube('ContractLicenses', {
     // *** Calculated Measure for License Surplus ***
     licenseSurplus: {
       type: `number`,
-      // This requires joining DomainApplications for its active user count.
-      // It's often better calculated in DBT and stored in fct_contract_licenses.
-      // If calculated here, it needs the join and careful aggregation.
-      // Example (assuming DomainApplications is joined):
-      sql: `${totalPurchasedQuantity} - ${DomainApplications.activeAccountsCount}`,
+      // Changed to use the difference between purchased and used quantity
+      sql: `(${totalPurchasedQuantity} - ${totalUsedQuantity})`,
       title: 'License Surplus / Deficit',
+    },
+    totalUsedQuantity: {
+      sql: `used_quantity`,
+      type: `sum`,
+      title: 'Total Used Licenses',
+    },
+    // *** Utilization Rate ***
+    utilizationRate: {
+      type: `number`,
+      sql: `CASE WHEN ${totalPurchasedQuantity} > 0 THEN (${totalUsedQuantity} * 100.0 / ${totalPurchasedQuantity}) ELSE 0 END`,
+      format: 'percent',
+      title: 'License Utilization Rate',
+    },
+    // *** Unused License Cost ***
+    unusedLicenseCost: {
+      type: `number`,
+      sql: `CASE
+              WHEN ${licenseSurplus} > 0 AND ${totalPurchasedQuantity} > 0
+              THEN ${licenseSurplus} * ${totalLicenseCost} / ${totalPurchasedQuantity}
+              ELSE 0
+            END`,
+      format: `currency`,
+      title: 'Unused License Cost',
     },
   },
 
@@ -49,11 +67,27 @@ cube('ContractLicenses', {
     payPeriod: {sql: `pay_period`, type: `string`, title: `Pay Period`},
     startDate: {sql: `start_date`, type: `time`},
     endDate: {sql: `end_date`, type: `time`},
+    purchasedQuantity: {
+      sql: `purchased_quantity`,
+      type: `number`,
+      title: 'Purchased Quantity',
+    },
+    usedQuantity: {
+      sql: `used_quantity`,
+      type: `number`,
+      title: 'Used Quantity',
+    },
   },
 
   segments: {
     seatLicenses: {
       sql: `${CUBE}.license_type = 'SEAT_LICENSE'`,
+    },
+    underutilizedLicenses: {
+      sql: `${CUBE}.used_quantity < ${CUBE}.purchased_quantity * 0.7`, // Under 70% utilization
+    },
+    overutilizedLicenses: {
+      sql: `${CUBE}.used_quantity > ${CUBE}.purchased_quantity`, // Using more licenses than purchased
     },
   },
 
