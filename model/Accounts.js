@@ -6,10 +6,10 @@ cube('Accounts', {
       sql: `${CUBE}.user_id = ${Users}.user_id`,
       relationship: `belongsTo`,
     },
-    DomainApplications: {
-      sql: `${CUBE}.domain_app_id = ${DomainApplications}.domain_app_id`,
-      relationship: `belongsTo`,
-    },
+    // DomainApplications: {
+    //   sql: `${CUBE}.domain_app_id = ${DomainApplications}.domain_app_id`,
+    //   relationship: `belongsTo`,
+    // },
     ContractLicenses: {
       sql: `${CUBE}.domain_app_id = ${ContractLicenses}.domain_app_id`,
       relationship: `hasMany`,

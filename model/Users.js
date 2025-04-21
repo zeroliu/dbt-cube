@@ -70,7 +70,7 @@ cube('Users', {
       sql: `${CUBE}.status = 'ACTIVE'`,
     },
     inactiveUsers: {
-      sql: `${CUBE}.status != 'ACTIVE' OR (${CUBE}.end_date IS NOT NULL AND ${CUBE}.end_date <= NOW())`,
+      sql: `${CUBE}.status != 'ACTIVE' OR (${CUBE}.end_date IS NOT NULL AND ${CUBE}.end_date <= datetime('now'))`,
     },
   },
 });

@@ -6,6 +6,10 @@ cube('DomainApplications', {
       sql: `${CUBE}.app_id = ${Applications}.app_id`,
       relationship: `belongsTo`,
     },
+    Accounts: {
+      sql: `${CUBE}.domain_app_id = ${Accounts}.domain_app_id`,
+      relationship: `many_to_one`,
+    },
     // Join to Vendors if vendor info is added to dim_domain_applications or via Contracts
     // Vendors: { ... }
   },
