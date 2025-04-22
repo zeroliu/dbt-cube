@@ -1,5 +1,13 @@
 cube('Applications', {
-  sqlTable: `dim_applications`,
+  shown: false,
+  sqlTable: `fact_applications`,
+
+  joins: {
+    AppInstances: {
+      sql: `${CUBE}.id = ${AppInstances}.app_id`,
+      relationship: `one_to_many`,
+    },
+  },
 
   measures: {
     count: {
@@ -9,8 +17,8 @@ cube('Applications', {
   },
 
   dimensions: {
-    appId: {
-      sql: `app_id`,
+    id: {
+      sql: `id`,
       type: `string`,
       primaryKey: true,
       title: `App ID`,

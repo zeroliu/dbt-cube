@@ -22,29 +22,31 @@ def generate_departments(n=15):
 
     for i in range(min(n, len(department_names))):
         departments.append({
-            'department_id': i + 1,
+            'id': i + 1,
             'department_name': department_names[i],
             'cost_center_code': f"CC-{random.randint(1000, 9999)}"
         })
     return pd.DataFrame(departments)
 
-# Generate users data
-def generate_users(departments_df, n=200):
-    users = []
+# Generate identities data (renamed from users)
+def generate_identities(departments_df, n=200):
+    identities = []
     statuses = ['ACTIVE', 'TERMINATED', 'ON_LEAVE']
     status_weights = [0.85, 0.1, 0.05]  # 85% active
     teams = ['Frontend', 'Backend', 'DevOps', 'QA', 'UX', 'Sales', 'Marketing', 'Finance', 'HR']
+    identity_types = ['EMPLOYEE', 'CONTRACTOR', 'VENDOR']
+    identity_type_weights = [0.8, 0.15, 0.05]
 
     # First create some managers
     manager_ids = []
     for i in range(10):
-        user_id = i + 1
-        manager_ids.append(user_id)
-        department = random.choice(departments_df['department_id'].tolist())
+        identity_id = i + 1
+        manager_ids.append(identity_id)
+        department = random.choice(departments_df['id'].tolist())
         start_date = fake.date_between(start_date='-5y', end_date='-1y')
 
-        users.append({
-            'user_id': user_id,
+        identities.append({
+            'id': identity_id,
             'full_name_precomputed': fake.name(),
             'email': fake.email(),
             'team': random.choice(teams),
@@ -52,18 +54,19 @@ def generate_users(departments_df, n=200):
             'department_id': department,
             'manager_id': None,  # Top-level managers have no manager
             'start_date': start_date,
-            'end_date': None if random.random() < 0.95 else fake.date_between(start_date=start_date, end_date='today')
+            'end_date': None if random.random() < 0.95 else fake.date_between(start_date=start_date, end_date='today'),
+            'identity_type': random.choices(identity_types, weights=identity_type_weights)[0]
         })
 
-    # Then create the rest of the users
+    # Then create the rest of the identities
     for i in range(10, n):
-        user_id = i + 1
-        department = random.choice(departments_df['department_id'].tolist())
+        identity_id = i + 1
+        department = random.choice(departments_df['id'].tolist())
         manager_id = random.choice(manager_ids)
         start_date = fake.date_between(start_date='-3y', end_date='-1m')
 
-        users.append({
-            'user_id': user_id,
+        identities.append({
+            'id': identity_id,
             'full_name_precomputed': fake.name(),
             'email': fake.email(),
             'team': random.choice(teams),
@@ -71,35 +74,14 @@ def generate_users(departments_df, n=200):
             'department_id': department,
             'manager_id': manager_id,
             'start_date': start_date,
-            'end_date': None if random.random() < 0.95 else fake.date_between(start_date=start_date, end_date='today')
+            'end_date': None if random.random() < 0.95 else fake.date_between(start_date=start_date, end_date='today'),
+            'identity_type': random.choices(identity_types, weights=identity_type_weights)[0]
         })
 
-    return pd.DataFrame(users)
+    return pd.DataFrame(identities)
 
-# Generate vendors data
-def generate_vendors(n=50):
-    vendors = []
-
-    vendor_names = [
-        'Microsoft', 'Google', 'Salesforce', 'Adobe', 'Oracle', 'IBM', 'SAP', 'ServiceNow',
-        'Atlassian', 'Slack', 'Zoom', 'Cisco', 'Dropbox', 'Box', 'DocuSign', 'Workday',
-        'HubSpot', 'Zendesk', 'Shopify', 'Asana', 'Monday.com', 'Notion', 'Figma', 'Miro',
-        'Airtable', 'Zapier', 'QuickBooks', 'NetSuite', 'Xero', 'Stripe', 'Okta', 'Auth0',
-        'GitHub', 'GitLab', 'BitBucket', 'CircleCI', 'Jenkins', 'AWS', 'Azure', 'GCP',
-        'DigitalOcean', 'Heroku', 'Twilio', 'SendGrid', 'Mailchimp', 'Intercom', 'Segment', 'Amplitude',
-        'NewRelic', 'Datadog'
-    ]
-
-    for i in range(min(n, len(vendor_names))):
-        vendors.append({
-            'vendor_id': i + 1,
-            'vendor_name': vendor_names[i]
-        })
-
-    return pd.DataFrame(vendors)
-
-# Generate base applications data
-def generate_applications(vendors_df, n=100):
+# Generate applications data
+def generate_applications(n=100):
     applications = []
 
     # Define real-world apps by category
@@ -109,33 +91,36 @@ def generate_applications(vendors_df, n=100):
         'Communication', 'Sales', 'Customer Support', 'Design', 'Infrastructure'
     ]
 
-    vendor_ids = vendors_df['vendor_id'].tolist()
+    vendor_names = [
+        'Microsoft', 'Google', 'Salesforce', 'Adobe', 'Oracle', 'IBM', 'SAP', 'ServiceNow',
+        'Atlassian', 'Slack', 'Zoom', 'Cisco', 'Dropbox', 'Box', 'DocuSign', 'Workday',
+        'HubSpot', 'Zendesk', 'Shopify', 'Asana', 'Monday.com', 'Notion', 'Figma', 'Miro',
+        'Airtable', 'Zapier', 'QuickBooks', 'NetSuite', 'Xero', 'Stripe', 'Okta', 'Auth0',
+        'GitHub', 'GitLab', 'BitBucket', 'CircleCI', 'Jenkins', 'AWS', 'Azure', 'GCP'
+    ]
 
     for i in range(n):
-        app_id = str(uuid.uuid4())
+        app_id = i + 1
         app_category = random.choice(app_categories)
-        vendor_id = random.choice(vendor_ids)
-        vendor_name = vendors_df[vendors_df['vendor_id'] == vendor_id]['vendor_name'].iloc[0]
+        vendor_name = random.choice(vendor_names)
 
         # Create app name based on vendor and category
         app_name = f"{vendor_name} {app_category}" if random.random() < 0.7 else fake.company() + " " + app_category
 
         applications.append({
-            'app_id': app_id,
+            'id': app_id,
             'app_name': app_name,
             'app_category': app_category,
-            'app_description': fake.paragraph(nb_sentences=3),
-            'vendor_id': vendor_id
+            'app_description': fake.paragraph(nb_sentences=3)
         })
 
     return pd.DataFrame(applications)
 
-# Generate domain applications (instances of base apps)
-def generate_domain_applications(applications_df, departments_df, n=150):
-    domain_applications = []
+# Generate app instances (renamed from domain_applications)
+def generate_app_instances(applications_df, n=150):
+    app_instances = []
 
     apps = applications_df.to_dict('records')
-    department_ids = departments_df['department_id'].tolist()
 
     app_statuses = ['APPROVED', 'NEEDS_REVIEW', 'DISCOVERED', 'DEPRECATED', 'BLOCKLISTED']
     status_weights = [0.6, 0.15, 0.1, 0.1, 0.05]
@@ -145,164 +130,59 @@ def generate_domain_applications(applications_df, departments_df, n=150):
     for i in range(n):
         app = random.choice(apps)
 
-        is_potential_shadow_it = random.random() < 0.2
-        is_explicit_shadow_it = is_potential_shadow_it and random.random() < 0.4
-        is_low_usage = random.random() < 0.25
+        is_shadow_it = random.random() < 0.2
+        is_in_app_store = random.random() < 0.7
 
         status = random.choices(app_statuses, weights=status_weights)[0]
-        if is_explicit_shadow_it and status == 'APPROVED':
-            status = random.choice(['NEEDS_REVIEW', 'DEPRECATED'])
 
         # Create instance label with some variety
         instance_types = ['Enterprise', 'Team', 'Department', 'Project', 'Dev', 'Test', 'Staging', 'Production']
         instance_label = f"{app['app_name']} {random.choice(instance_types)}" if random.random() < 0.7 else app['app_name']
 
-        # Create some app configurations
-        configs = ['Standard', 'Custom', 'Basic', 'Premium', 'Enterprise']
-
         # Select random sources for discovery
         num_sources = random.randint(1, 3)
         selected_sources = random.sample(discovery_sources, num_sources)
 
-        # Calculate user counts for the domain app
-        num_users = random.randint(5, 50)
-        active_users = int(num_users * random.uniform(0.6, 0.95))
-
-        domain_applications.append({
-            'domain_app_id': i + 1,
-            'domain_id': 1,  # Assuming single domain for simplicity
-            'app_id': app['app_id'],
+        app_instances.append({
+            'id': i + 1,
+            'app_id': app['id'],
             'instance_label': instance_label,
             'domain_app_status': status,
-            'app_configuration': random.choice(configs),
-            'is_potential_shadow_it': is_potential_shadow_it,
-            'is_explicit_shadow_it': is_explicit_shadow_it,
-            'is_low_usage': is_low_usage,
+            'is_shadow_it': is_shadow_it,
+            'is_in_app_store': is_in_app_store,
             'discovery_sources': ', '.join(selected_sources),
             'discovered_at': fake.date_time_between(start_date='-1y', end_date='now').isoformat(),
-            'final_category': app['app_category'],  # Could be overridden in some cases
-            'primary_department_id': random.choice(department_ids),
-            'num_users_in_domain': num_users,
-            'num_users_with_active_status': active_users
         })
 
-    return pd.DataFrame(domain_applications)
+    return pd.DataFrame(app_instances)
 
-# Generate contract licenses data
-def generate_contract_licenses(domain_applications_df, n=200):
-    contract_licenses = []
+# Generate app sources data
+def generate_app_sources(app_instances_df, n=200):
+    app_sources = []
+    source_types = ['LUMOS_INTEGRATION', 'GSUITE_DEEP_INBOX', 'GSUITE_OAUTH', 'OKTA', 'GOOGLE_CLOUD', 'MANUAL', 'MICROSOFT_OAUTH']
 
-    domain_app_ids = domain_applications_df['domain_app_id'].tolist()
-    license_types = ['SEAT_LICENSE', 'USAGE_BASED', 'SITE_LICENSE', 'CONCURRENT_LICENSE']
-    pay_periods = ['MONTHLY', 'QUARTERLY', 'ANNUAL', 'MULTI_YEAR']
+    app_instance_ids = app_instances_df['id'].tolist()
 
-    # Generate some contracts first
-    contracts = []
-    for i in range(50):
-        contract_id = i + 1
-        domain_app_id = random.choice(domain_app_ids)
-
-        # Get info about this domain app
-        domain_app = domain_applications_df[domain_applications_df['domain_app_id'] == domain_app_id].iloc[0]
-
-        # Contract start date typically before discovery date
-        contract_start = fake.date_time_between(start_date='-2y', end_date='-6m')
-        contract_duration = random.choice([1, 2, 3])  # Years
-        contract_end = contract_start + timedelta(days=365 * contract_duration)
-
-        # Add to contracts list (could be stored in a separate table)
-        contracts.append({
-            'contract_id': contract_id,
-            'domain_app_id': domain_app_id,
-            'start_date': contract_start,
-            'end_date': contract_end
-        })
-
-    # Now generate license items
     for i in range(n):
-        contract = random.choice(contracts)
-        contract_id = contract['contract_id']
-        domain_app_id = contract['domain_app_id']
+        app_instance_id = random.choice(app_instance_ids)
+        source_name = random.choice(source_types)
 
-        # Find actual domain app to align quantities
-        domain_app = domain_applications_df[domain_applications_df['domain_app_id'] == domain_app_id].iloc[0]
-
-        # Base purchased quantity on number of users with some variance
-        base_users = domain_app['num_users_in_domain']
-        purchased_quantity = max(base_users + random.randint(-10, 20), 1)
-
-        # Calculate costs
-        license_type = random.choice(license_types)
-        if license_type == 'SEAT_LICENSE':
-            cost_per_license = random.uniform(50, 500)
-        elif license_type == 'USAGE_BASED':
-            cost_per_license = random.uniform(0.10, 5.0)
-            purchased_quantity = random.randint(1000, 10000)  # API calls, etc.
-        elif license_type == 'SITE_LICENSE':
-            cost_per_license = random.uniform(5000, 50000)
-            purchased_quantity = 1  # Site licenses cover the whole org
-        else:  # CONCURRENT_LICENSE
-            cost_per_license = random.uniform(200, 800)
-            purchased_quantity = max(int(base_users * 0.4), 5)  # Fewer needed
-
-        # Calculate used quantity based on active users with some randomness
-        # For seat licenses, it's related to active users
-        if license_type == 'SEAT_LICENSE':
-            active_users = domain_app['num_users_with_active_status']
-            # Sometimes we use more than purchased (overuse), sometimes less (underuse)
-            usage_ratio = random.uniform(0.7, 1.1)
-            used_quantity = int(active_users * usage_ratio)
-        elif license_type == 'USAGE_BASED':
-            # Usage based licenses often have different utilization patterns
-            used_quantity = int(purchased_quantity * random.uniform(0.4, 0.95))
-        elif license_type == 'SITE_LICENSE':
-            # Site licenses are fully used since they cover the whole org
-            used_quantity = 1
-        else:  # CONCURRENT_LICENSE
-            # Concurrent licenses usually have a higher utilization rate
-            used_quantity = int(purchased_quantity * random.uniform(0.6, 0.95))
-
-        pay_period = random.choice(pay_periods)
-
-        # Adjust cost based on payment period
-        period_multiplier = {
-            'MONTHLY': 1,
-            'QUARTERLY': 3,
-            'ANNUAL': 12,
-            'MULTI_YEAR': 24
-        }
-
-        # Calculate total cost for the period
-        total_cost = cost_per_license * purchased_quantity * period_multiplier[pay_period]
-
-        # Calculate annual cost per license for comparison
-        annual_multiplier = 12 / period_multiplier[pay_period]
-        cost_per_license_annual = cost_per_license * annual_multiplier
-
-        contract_licenses.append({
-            'line_item_id': i + 1,
-            'contract_id': contract_id,
-            'domain_app_id': domain_app_id,
-            'license_type': license_type,
-            'pay_period': pay_period,
-            'start_date': contract['start_date'].isoformat(),
-            'end_date': contract['end_date'].isoformat(),
-            'purchased_quantity': purchased_quantity,
-            'used_quantity': used_quantity,
-            'total_cost': round(total_cost, 2),
-            'cost_per_license_annual': round(cost_per_license_annual, 2)
+        app_sources.append({
+            'app_source_id': i + 1,
+            'app_source_name': source_name,
+            'app_instance_id': app_instance_id
         })
 
-    return pd.DataFrame(contract_licenses)
+    return pd.DataFrame(app_sources)
 
-# Generate accounts (user-app links)
-def generate_accounts(users_df, domain_applications_df, n=800):
+# Generate accounts data (user-app instance links)
+def generate_accounts(identities_df, app_instances_df, n=800):
     accounts = []
 
-    active_users = users_df[users_df['status'] == 'ACTIVE']['user_id'].tolist()
-    domain_app_ids = domain_applications_df['domain_app_id'].tolist()
+    active_identities = identities_df[identities_df['status'] == 'ACTIVE']['id'].tolist()
+    app_instance_ids = app_instances_df['id'].tolist()
 
-    status_types = ['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED']
+    account_statuses = ['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED']
     status_weights = [0.75, 0.15, 0.05, 0.05]
 
     # Track user-app combinations to avoid duplicates
@@ -311,89 +191,97 @@ def generate_accounts(users_df, domain_applications_df, n=800):
     for i in range(n):
         # Keep trying until we get a unique user-app combination
         while True:
-            user_id = random.choice(active_users)
-            domain_app_id = random.choice(domain_app_ids)
+            user_id = random.choice(active_identities)
+            app_instance_id = random.choice(app_instance_ids)
 
-            combo = (user_id, domain_app_id)
+            combo = (user_id, app_instance_id)
             if combo not in used_combos:
                 used_combos.add(combo)
                 break
 
-        account_status = random.choices(status_types, weights=status_weights)[0]
+        account_status = random.choices(account_statuses, weights=status_weights)[0]
 
         # Generate last activity date
         if account_status == 'ACTIVE':
             # Active accounts have recent activity
             last_activity = fake.date_time_between(start_date='-30d', end_date='now')
-            last_login = fake.date_time_between(start_date='-60d', end_date=last_activity)
         else:
             # Inactive accounts have older activity dates
             last_activity = fake.date_time_between(start_date='-180d', end_date='-30d')
-            last_login = fake.date_time_between(start_date='-190d', end_date=last_activity)
 
-        # Determine if dormant based on last activity
-        is_dormant = (datetime.now() - last_activity).days > 90
+        is_matched = random.random() < 0.95  # 95% of accounts are matched to identities
+        is_admin = random.random() < 0.15    # 15% of accounts are admin accounts
 
         accounts.append({
-            'account_id': i + 1,
+            'id': i + 1,
             'user_id': user_id,
-            'domain_app_id': domain_app_id,
+            'app_instance_id': app_instance_id,
             'account_status': account_status,
             'last_activity_dt': last_activity.isoformat(),
-            'last_login_dt': last_login.isoformat(),
-            'is_dormant': is_dormant
+            'is_matched': is_matched,
+            'is_admin': is_admin
         })
 
     return pd.DataFrame(accounts)
 
-# Generate usage activity data
-def generate_usage_activity(accounts_df, n=5000):
-    usage_activity = []
-    activity_types = ['Login', 'DataAccess', 'Report', 'Configuration', 'DataEntry', 'Export', 'Import', 'Search']
+# Generate licenses data
+def generate_licenses(accounts_df, n=400):
+    licenses = []
 
-    # Get accounts data
-    accounts = accounts_df.to_dict('records')
+    license_names = ['Basic User', 'Standard User', 'Premium User', 'Enterprise Access', 'Developer License',
+                     'Admin License', 'Full Access', 'Limited Access', 'Read-Only', 'Power User']
+
+    # Convert accounts to records for easier lookup
+    accounts_records = accounts_df.to_dict('records')
+    account_ids = accounts_df['id'].tolist()
 
     for i in range(n):
-        # Randomly select an account
-        account = random.choice(accounts)
+        account_id = random.choice(account_ids)
 
-        # Generate activity timestamp in the last 60 days (higher concentration in last 30)
-        if random.random() < 0.8:  # 80% in last 30 days
-            activity_ts = fake.date_time_between(start_date='-30d', end_date='now')
-        else:
-            activity_ts = fake.date_time_between(start_date='-60d', end_date='-30d')
+        # Find the account record to get its app_instance_id
+        account = next(acc for acc in accounts_records if acc['id'] == account_id)
+        app_instance_id = account['app_instance_id']
 
-        usage_activity.append({
-            'event_id': str(uuid.uuid4()),
-            'user_id': account['user_id'],
-            'domain_app_id': account['domain_app_id'],
-            'activity_ts': activity_ts.isoformat(),
-            'activity_type': random.choice(activity_types)
+        # Get account info to determine dates
+        assigned_date = fake.date_time_between(start_date='-1y', end_date='-1m')
+        end_date = assigned_date + timedelta(days=random.choice([90, 180, 365, 730]))
+
+        unit_annual_cost = random.choice([0, 15, 50, 150, 450, 1200, 2500])
+        is_privileged = random.random() < 0.2
+        purchased_quantity = random.randint(1, 10)
+
+        licenses.append({
+            'id': i + 1,
+            'license_name': random.choice(license_names),
+            'account_id': account_id,
+            'app_instance_id': app_instance_id,
+            'assigned_date': assigned_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'unit_annual_cost': unit_annual_cost,
+            'is_privileged': is_privileged,
+            'purchased_quantity': purchased_quantity
         })
 
-    return pd.DataFrame(usage_activity)
+    return pd.DataFrame(licenses)
 
 if __name__ == '__main__':
     # Generate data
     departments_df = generate_departments()
-    vendors_df = generate_vendors()
-    users_df = generate_users(departments_df)
-    applications_df = generate_applications(vendors_df)
-    domain_applications_df = generate_domain_applications(applications_df, departments_df)
-    contract_licenses_df = generate_contract_licenses(domain_applications_df)
-    accounts_df = generate_accounts(users_df, domain_applications_df)
-    usage_activity_df = generate_usage_activity(accounts_df)
+    identities_df = generate_identities(departments_df)
+    applications_df = generate_applications()
+    app_instances_df = generate_app_instances(applications_df)
+    app_sources_df = generate_app_sources(app_instances_df)
+    accounts_df = generate_accounts(identities_df, app_instances_df)
+    licenses_df = generate_licenses(accounts_df)
 
     # Save to SQLite
     departments_df.to_sql('dim_departments', conn, if_exists='replace', index=False)
-    vendors_df.to_sql('dim_vendors', conn, if_exists='replace', index=False)
-    users_df.to_sql('dim_users', conn, if_exists='replace', index=False)
-    applications_df.to_sql('dim_applications', conn, if_exists='replace', index=False)
-    domain_applications_df.to_sql('dim_domain_applications', conn, if_exists='replace', index=False)
-    contract_licenses_df.to_sql('fct_contract_licenses', conn, if_exists='replace', index=False)
+    identities_df.to_sql('dim_identities', conn, if_exists='replace', index=False)
+    applications_df.to_sql('fact_applications', conn, if_exists='replace', index=False)
+    app_instances_df.to_sql('dim_domain_applications', conn, if_exists='replace', index=False)
+    app_sources_df.to_sql('fact_app_sources', conn, if_exists='replace', index=False)
     accounts_df.to_sql('fct_accounts', conn, if_exists='replace', index=False)
-    usage_activity_df.to_sql('fct_usage_activity', conn, if_exists='replace', index=False)
+    licenses_df.to_sql('fct_licenses', conn, if_exists='replace', index=False)
 
     print("SaaS management sample data generated successfully!")
     conn.close()

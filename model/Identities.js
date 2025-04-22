@@ -1,24 +1,28 @@
-cube('Users', {
-  sqlTable: `dim_users`, // Direct table name instead of DBT ref
+cube('Identities', {
+  sqlTable: `dim_identities`, // Direct table name instead of DBT ref
 
   joins: {
     Managers: {
       // Self-join for manager hierarchy/name
-      sql: `${Users}.manager_id = ${Managers}.user_id`,
-      relationship: `belongsTo`,
+      sql: `${CUBE}.manager_id = ${Managers}.id`,
+      relationship: `one_to_many`,
+    },
+    Accounts: {
+      sql: `${CUBE}.id = ${Accounts}.user_id`,
+      relationship: `one_to_many`,
     },
   },
 
   measures: {
     count: {
       type: `count`,
-      description: `Total number of users defined in the dimension.`,
+      description: `Total number of identities defined in the dimension.`,
     },
   },
 
   dimensions: {
-    userId: {
-      sql: `user_id`,
+    id: {
+      sql: `id`,
       type: `number`,
       primaryKey: true,
       shown: true, // Often useful to show IDs for debugging/linking
@@ -59,23 +63,21 @@ cube('Users', {
     managerName: {
       sql: `${Managers.fullName}`,
       type: `string`,
-      subQuery: true, // Indicates this comes from a joined cube
+      // subQuery: true, // Indicates this comes from a joined cube
       title: `Manager Name`,
     },
-    // Consider adding identity_type if relevant
+    identityType: {
+      sql: `identity_type`,
+      type: `string`,
+      title: `Identity Type`,
+    },
   },
 
-  segments: {
-    activeUsers: {
-      sql: `${CUBE}.status = 'ACTIVE'`,
-    },
-    inactiveUsers: {
-      sql: `${CUBE}.status != 'ACTIVE' OR (${CUBE}.end_date IS NOT NULL AND ${CUBE}.end_date <= datetime('now'))`,
-    },
-  },
+  segments: {},
 });
 
 // Alias for the self-join
 cube('Managers', {
-  extends: Users,
+  shown: false,
+  extends: Identities,
 });
