@@ -2,16 +2,21 @@
 import sqlite3
 import datetime
 import random
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 # Connect to SQLite database
 conn = sqlite3.connect('raw_data.db')
 c = conn.cursor()
 
 # Create snapshot tables if they don't exist
-print("Creating snapshot tables...")
+print("Creating SCD Type 2 tables...")
 
-# Create account snapshots table
+# Drop existing tables if they exist to recreate with new schema
+c.execute("DROP TABLE IF EXISTS fact_account_snapshots")
+c.execute("DROP TABLE IF EXISTS fact_identity_snapshots")
+c.execute("DROP TABLE IF EXISTS fact_app_instance_snapshots")
+
+# Create account snapshots table with SCD Type 2 fields
 c.execute('''
 CREATE TABLE IF NOT EXISTS fact_account_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +24,9 @@ CREATE TABLE IF NOT EXISTS fact_account_snapshots (
     app_instance_id INTEGER NOT NULL,
     account_status TEXT NOT NULL,
     last_activity_dt TEXT,
-    snapshot_date TEXT NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_to TEXT,
+    is_current BOOLEAN NOT NULL,
     is_matched BOOLEAN,
     is_admin BOOLEAN,
     FOREIGN KEY (account_id) REFERENCES fct_accounts(id),
@@ -27,19 +34,21 @@ CREATE TABLE IF NOT EXISTS fact_account_snapshots (
 )
 ''')
 
-# Create identity snapshots table
+# Create identity snapshots table with SCD Type 2 fields
 c.execute('''
 CREATE TABLE IF NOT EXISTS fact_identity_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     identity_id INTEGER NOT NULL,
     identity_status TEXT NOT NULL,
     created_dt TEXT,
-    snapshot_date TEXT NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_to TEXT,
+    is_current BOOLEAN NOT NULL,
     FOREIGN KEY (identity_id) REFERENCES dim_identities(id)
 )
 ''')
 
-# Create app instance snapshots table
+# Create app instance snapshots table with SCD Type 2 fields
 c.execute('''
 CREATE TABLE IF NOT EXISTS fact_app_instance_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,123 +56,285 @@ CREATE TABLE IF NOT EXISTS fact_app_instance_snapshots (
     app_id INTEGER NOT NULL,
     instance_status TEXT NOT NULL,
     created_dt TEXT,
-    snapshot_date TEXT NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_to TEXT,
+    is_current BOOLEAN NOT NULL,
+    is_shadow_it BOOLEAN NOT NULL,
     FOREIGN KEY (instance_id) REFERENCES dim_domain_applications(id),
     FOREIGN KEY (app_id) REFERENCES fact_applications(id)
 )
 ''')
 
-# Clear existing data (optional - comment out if you want to keep existing snapshots)
-c.execute("DELETE FROM fact_account_snapshots")
-c.execute("DELETE FROM fact_app_instance_snapshots")
-
-# Generate snapshot dates (last 1 month, daily snapshots)
+# Generate date range (last 1 month)
 today = datetime.datetime.now()
-snapshot_dates: List[str] = []
-for i in range(30):  # 1 month of daily snapshots
-    snapshot_date = today - datetime.timedelta(days=i)
-    snapshot_dates.append(snapshot_date.strftime('%Y-%m-%d'))
+end_date = today
+start_date = today - datetime.timedelta(days=30)
+start_date_str = start_date.strftime('%Y-%m-%d')
+end_date_str = end_date.strftime('%Y-%m-%d')
 
-print(f"Generating snapshots for {len(snapshot_dates)} days...")
+print(f"Generating SCD Type 2 data from {end_date.strftime('%Y-%m-%d')} backward to {start_date.strftime('%Y-%m-%d')}...")
 
-# Generate account snapshots
+# 1. FIRST: Generate current records for all entities at end_date (today)
+
+# Generate current account records
+print("Creating current account records (today's state)...")
 c.execute("SELECT id, user_id, app_instance_id, account_status, last_activity_dt, is_matched, is_admin FROM fct_accounts")
 accounts = c.fetchall()
-
-print(f"Processing {len(accounts)} accounts...")
-account_count = 0
 
 for account in accounts:
     account_id, user_id, app_instance_id, status, last_activity, is_matched, is_admin = account
 
-    # Create snapshot entries for each date
-    for snapshot_date_str in snapshot_dates:
-        # Randomly vary the account status over time for some accounts
-        if random.random() < 0.2:  # 20% chance of status change
-            new_status = random.choice(['ACTIVE', 'SUSPENDED'])
-        else:
-            new_status = status
+    # Create current record at end_date
+    record = {
+        'account_id': account_id,
+        'app_instance_id': app_instance_id,
+        'account_status': status,
+        'last_activity_dt': last_activity,
+        'effective_from': end_date_str,
+        'effective_to': None,
+        'is_current': 1,
+        'is_matched': is_matched,
+        'is_admin': is_admin
+    }
 
-        # Update last_activity_dt for some accounts regardless of status
-        # This simulates that activity can happen on any account regardless of status
-        if random.random() < 0.3:  # 30% chance of activity update
-            # Set last_activity_dt to a random date close to the snapshot
-            days_before = random.randint(0, 7)
-            snapshot_datetime = datetime.datetime.strptime(snapshot_date_str, '%Y-%m-%d')
-            activity_date = snapshot_datetime - datetime.timedelta(days=days_before)
-            new_last_activity = activity_date.strftime('%Y-%m-%d')
-        else:
-            new_last_activity = last_activity
+    columns = ', '.join(record.keys())
+    placeholders = ', '.join(['?'] * len(record))
+    c.execute(f"INSERT INTO fact_account_snapshots ({columns}) VALUES ({placeholders})",
+             tuple(record.values()))
 
-        # Insert the snapshot record
-        c.execute('''
-            INSERT INTO fact_account_snapshots
-            (account_id, app_instance_id, account_status, last_activity_dt, snapshot_date, is_matched, is_admin)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (account_id, app_instance_id, new_status, new_last_activity, snapshot_date_str, is_matched, is_admin))
-
-    account_count += 1
-    if account_count % 100 == 0:
-        print(f"Processed {account_count} accounts...")
-
-# Generate identity snapshots
+# Generate current identity records
+print("Creating current identity records (today's state)...")
 c.execute("SELECT id, status, start_date FROM dim_identities")
 identities = c.fetchall()
-
-print(f"Processing {len(identities)} identities...")
-identity_count = 0
 
 for identity in identities:
     identity_id, status, created_dt = identity
 
-    for snapshot_date_str in snapshot_dates:
-        # Randomly vary the identity status for some identities
-        if random.random() < 0.1:  # 10% chance of status change
-            new_status = random.choice(['ACTIVE', 'TERMINATED', 'ON_LEAVE'])
-        else:
-            new_status = status
+    # Create current record at end_date
+    record = {
+        'identity_id': identity_id,
+        'identity_status': status,
+        'created_dt': created_dt,
+        'effective_from': end_date_str,
+        'effective_to': None,
+        'is_current': 1
+    }
 
-        # Insert the snapshot record
-        c.execute('''
-            INSERT INTO fact_identity_snapshots
-            (identity_id, identity_status, created_dt, snapshot_date)
-            VALUES (?, ?, ?, ?)
-        ''', (identity_id, new_status, created_dt, snapshot_date_str))
+    columns = ', '.join(record.keys())
+    placeholders = ', '.join(['?'] * len(record))
+    c.execute(f"INSERT INTO fact_identity_snapshots ({columns}) VALUES ({placeholders})",
+             tuple(record.values()))
 
-    identity_count += 1
-    if identity_count % 50 == 0:
-        print(f"Processed {identity_count} identities...")
-
-# Generate app instance snapshots
-c.execute("SELECT id, app_id, domain_app_status, discovered_at FROM dim_domain_applications")
+# Generate current app instance records
+print("Creating current app instance records (today's state)...")
+c.execute("SELECT id, app_id, domain_app_status, discovered_at, is_shadow_it FROM dim_domain_applications")
 app_instances = c.fetchall()
 
-print(f"Processing {len(app_instances)} app instances...")
-instance_count = 0
-
 for app_instance in app_instances:
-    instance_id, app_id, status, created_dt = app_instance
+    instance_id, app_id, status, created_dt, is_shadow_it = app_instance
 
-    for snapshot_date_str in snapshot_dates:
-        # Randomly vary the instance status for some instances
-        if random.random() < 0.1:  # 10% chance of status change
-            new_status = random.choice(['APPROVED', 'NEEDS_REVIEW', 'DISCOVERED', 'DEPRECATED', 'BLOCKLISTED'])
-        else:
-            new_status = status
+    # Create current record at end_date
+    record = {
+        'instance_id': instance_id,
+        'app_id': app_id,
+        'instance_status': status,
+        'created_dt': created_dt,
+        'effective_from': end_date_str,
+        'effective_to': None,
+        'is_current': 1,
+        'is_shadow_it': is_shadow_it
+    }
 
-        # Insert the snapshot record
-        c.execute('''
-            INSERT INTO fact_app_instance_snapshots
-            (instance_id, app_id, instance_status, created_dt, snapshot_date)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (instance_id, app_id, new_status, created_dt, snapshot_date_str))
+    columns = ', '.join(record.keys())
+    placeholders = ', '.join(['?'] * len(record))
+    c.execute(f"INSERT INTO fact_app_instance_snapshots ({columns}) VALUES ({placeholders})",
+             tuple(record.values()))
 
-    instance_count += 1
-    if instance_count % 50 == 0:
-        print(f"Processed {instance_count} app instances...")
+# Store the current state of each entity for backward changes
+account_states = {}
+for account in accounts:
+    account_id, user_id, app_instance_id, status, last_activity, is_matched, is_admin = account
+    account_states[account_id] = {
+        'status': status,
+        'last_activity': last_activity,
+        'is_matched': is_matched,
+        'is_admin': is_admin
+    }
+
+identity_states = {}
+for identity in identities:
+    identity_id, status, created_dt = identity
+    identity_states[identity_id] = {
+        'status': status,
+        'created_dt': created_dt
+    }
+
+app_instance_states = {}
+for app_instance in app_instances:
+    instance_id, app_id, status, created_dt, is_shadow_it = app_instance
+    app_instance_states[instance_id] = {
+        'status': status,
+        'created_dt': created_dt,
+        'is_shadow_it': is_shadow_it
+    }
+
+# Helper function to add historical SCD Type 2 record
+def add_historical_record(table_name: str, entity_id: int, record: Dict[str, Any],
+                         effective_date: str, previous_date: str, entity_id_column: str) -> None:
+    # Find the most recent record for this entity with the given effective date
+    c.execute(f"SELECT id FROM {table_name} WHERE {entity_id_column} = ? AND effective_from = ?",
+             (entity_id, previous_date))
+    recent_record = c.fetchone()
+
+    if recent_record:
+        # Update the previous record to point to this new historical record
+        c.execute(f"UPDATE {table_name} SET effective_to = ? WHERE id = ?",
+                 (effective_date, recent_record[0]))
+
+    # Insert the new historical record
+    columns = ', '.join(record.keys())
+    placeholders = ', '.join(['?'] * len(record))
+    c.execute(f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})",
+             tuple(record.values()))
+
+# 2. SECOND: Generate historical changes going backward in time
+print("Generating historical changes backward in time...")
+
+# Start from yesterday and go backward to start_date
+current_date = end_date - datetime.timedelta(days=1)
+days_back = 1
+
+while current_date >= start_date:
+    current_date_str = current_date.strftime('%Y-%m-%d')
+    previous_date_str = (current_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+
+    # Process account historical changes
+    for account_id, current_state in account_states.items():
+        # Get the app_instance_id for this account
+        c.execute("SELECT app_instance_id FROM fct_accounts WHERE id = ?", (account_id,))
+        app_instance_id = c.fetchone()[0]
+
+        # Determine if there should be a change
+        make_change = False
+        historical_state = current_state.copy()
+
+        # Randomly change status (20% chance)
+        if random.random() < 0.2:
+            historical_state['status'] = random.choice(['ACTIVE', 'SUSPENDED'])
+            make_change = True
+
+        # Randomly update last activity date (30% chance)
+        if random.random() < 0.3:
+            days_before = random.randint(0, 7)
+            activity_date = current_date - datetime.timedelta(days=days_before)
+            historical_state['last_activity'] = activity_date.strftime('%Y-%m-%d')
+            make_change = True
+
+        # Randomly change is_matched or is_admin (10% chance)
+        if random.random() < 0.1:
+            historical_state['is_matched'] = not current_state['is_matched']
+            make_change = True
+
+        if random.random() < 0.1:
+            historical_state['is_admin'] = not current_state['is_admin']
+            make_change = True
+
+        # If there's a change, create a historical record
+        if make_change:
+            record = {
+                'account_id': account_id,
+                'app_instance_id': app_instance_id,
+                'account_status': historical_state['status'],
+                'last_activity_dt': historical_state['last_activity'],
+                'effective_from': current_date_str,
+                'effective_to': previous_date_str,
+                'is_current': 0,
+                'is_matched': historical_state['is_matched'],
+                'is_admin': historical_state['is_admin']
+            }
+
+            add_historical_record('fact_account_snapshots', account_id, record,
+                                 previous_date_str, previous_date_str, 'account_id')
+
+            # Update the current state (for the next iteration)
+            account_states[account_id] = historical_state
+
+    # Process identity historical changes
+    for identity_id, current_state in identity_states.items():
+        # Determine if there should be a change
+        make_change = False
+        historical_state = current_state.copy()
+
+        # Randomly change status (10% chance)
+        if random.random() < 0.1:
+            historical_state['status'] = random.choice(['ACTIVE', 'TERMINATED', 'ON_LEAVE'])
+            make_change = True
+
+        # If there's a change, create a historical record
+        if make_change:
+            record = {
+                'identity_id': identity_id,
+                'identity_status': historical_state['status'],
+                'created_dt': historical_state['created_dt'],
+                'effective_from': current_date_str,
+                'effective_to': previous_date_str,
+                'is_current': 0
+            }
+
+            add_historical_record('fact_identity_snapshots', identity_id, record,
+                                 previous_date_str, previous_date_str, 'identity_id')
+
+            # Update the current state (for the next iteration)
+            identity_states[identity_id] = historical_state
+
+    # Process app instance historical changes
+    for instance_id, current_state in app_instance_states.items():
+        # Get the app_id for this instance
+        c.execute("SELECT app_id FROM dim_domain_applications WHERE id = ?", (instance_id,))
+        app_id = c.fetchone()[0]
+
+        # Determine if there should be a change
+        make_change = False
+        historical_state = current_state.copy()
+
+        # Randomly change status (10% chance)
+        if random.random() < 0.1:
+            historical_state['status'] = random.choice(['APPROVED', 'NEEDS_REVIEW', 'DISCOVERED', 'DEPRECATED', 'BLOCKLISTED'])
+            make_change = True
+
+        # Randomly change shadow IT status (5% chance)
+        if random.random() < 0.05:
+            historical_state['is_shadow_it'] = not current_state['is_shadow_it']
+            make_change = True
+
+        # If there's a change, create a historical record
+        if make_change:
+            record = {
+                'instance_id': instance_id,
+                'app_id': app_id,
+                'instance_status': historical_state['status'],
+                'created_dt': historical_state['created_dt'],
+                'effective_from': current_date_str,
+                'effective_to': previous_date_str,
+                'is_current': 0,
+                'is_shadow_it': historical_state['is_shadow_it']
+            }
+
+            add_historical_record('fact_app_instance_snapshots', instance_id, record,
+                                 previous_date_str, previous_date_str, 'instance_id')
+
+            # Update the current state (for the next iteration)
+            app_instance_states[instance_id] = historical_state
+
+    days_back += 1
+    if days_back % 5 == 0:
+        print(f"Processed {days_back} days back in time...")
+
+    current_date -= datetime.timedelta(days=1)
 
 # Commit and close
 conn.commit()
 conn.close()
 
-print("Snapshot data generated successfully for accounts, identities, and app instances!")
+print("SCD Type 2 data generated successfully for accounts, identities, and app instances!")
+print("The most recent state matches the current state in the original tables.")

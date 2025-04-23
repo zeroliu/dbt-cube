@@ -11,27 +11,7 @@ cube('IdentitySnapshots', {
   measures: {
     count: {
       type: `count`,
-      drillMembers: [identityId, snapshotDate, identityStatus],
-    },
-    activeIdentitiesCount: {
-      type: `count`,
-      filters: [{sql: `${CUBE}.identity_status = 'ACTIVE'`}],
-      drillMembers: [snapshotDate, identityId],
-    },
-    terminatedIdentitiesCount: {
-      type: `count`,
-      filters: [{sql: `${CUBE}.identity_status = 'TERMINATED'`}],
-      drillMembers: [snapshotDate, identityId],
-    },
-    onLeaveIdentitiesCount: {
-      type: `count`,
-      filters: [{sql: `${CUBE}.identity_status = 'ON_LEAVE'`}],
-      drillMembers: [snapshotDate, identityId],
-    },
-    activeRatio: {
-      type: `number`,
-      sql: `CAST(${activeIdentitiesCount} AS FLOAT) / NULLIF(${count}, 0)`,
-      format: `percent`,
+      drillMembers: [identityId, identityStatus],
     },
   },
 
@@ -42,9 +22,48 @@ cube('IdentitySnapshots', {
       primaryKey: true,
       shown: true,
     },
-    snapshotDate: {
-      sql: `snapshot_date`,
+    email: {
+      sql: `${Identities.email}`,
+      type: `string`,
+    },
+    fullName: {
+      sql: `${Identities.fullName}`,
+      type: `string`,
+      title: `Full Name`,
+    },
+    team: {
+      sql: `${Identities.team}`,
+      type: `string`,
+    },
+    startDate: {
+      sql: `${Identities.startDate}`,
       type: `time`,
+      title: `Start Date`,
+    },
+    endDate: {
+      sql: `${Identities.endDate}`,
+      type: `time`,
+      title: `End Date`,
+    },
+    managerName: {
+      sql: `${Identities.managerName}`,
+      type: `string`,
+      title: `Manager Name`,
+    },
+    effectiveFrom: {
+      sql: `effective_from`,
+      type: `time`,
+      title: `Effective From`,
+    },
+    effectiveTo: {
+      sql: `effective_to`,
+      type: `time`,
+      title: `Effective To`,
+    },
+    isCurrent: {
+      sql: `is_current`,
+      type: `boolean`,
+      title: `Is Current Record`,
     },
     identityStatus: {
       sql: `identity_status`,
@@ -59,17 +78,8 @@ cube('IdentitySnapshots', {
   },
 
   segments: {
-    isActive: {
-      sql: `${CUBE}.identity_status = 'ACTIVE'`,
-    },
-    isTerminated: {
-      sql: `${CUBE}.identity_status = 'TERMINATED'`,
-    },
-    isOnLeave: {
-      sql: `${CUBE}.identity_status = 'ON_LEAVE'`,
-    },
-    recentlyTerminated: {
-      sql: `${CUBE}.identity_status = 'TERMINATED' AND date(${CUBE}.snapshot_date) > date('now', '-30 days')`,
+    currentRecords: {
+      sql: `${CUBE}.is_current = 1`,
     },
   },
 });

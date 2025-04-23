@@ -264,6 +264,30 @@ def generate_licenses(accounts_df, n=400):
 
     return pd.DataFrame(licenses)
 
+# Generate date dimension table
+def generate_dates(start_date_str='-5y', end_date_str='+1y'):
+    start_date = fake.date_between(start_date=start_date_str, end_date='today')
+    end_date = fake.date_between(start_date='today', end_date=end_date_str)
+
+    # Handle potential case where start_date > end_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    dates = pd.date_range(start=start_date, end=end_date, freq='D')
+    date_df = pd.DataFrame({'full_date': dates})
+
+    date_df['date_id'] = date_df['full_date'].dt.strftime('%Y%m%d').astype(int)
+    date_df['year'] = date_df['full_date'].dt.year
+    date_df['month'] = date_df['full_date'].dt.month
+    date_df['day'] = date_df['full_date'].dt.day
+    date_df['day_of_week'] = date_df['full_date'].dt.dayofweek # Monday=0, Sunday=6
+    date_df['day_name'] = date_df['full_date'].dt.strftime('%A')
+    date_df['month_name'] = date_df['full_date'].dt.strftime('%B')
+    date_df['quarter'] = date_df['full_date'].dt.quarter
+    date_df['is_weekend'] = date_df['day_of_week'].isin([5, 6])
+
+    return date_df[['date_id', 'full_date', 'year', 'month', 'day', 'day_of_week', 'day_name', 'month_name', 'quarter', 'is_weekend']]
+
 if __name__ == '__main__':
     # Generate data
     departments_df = generate_departments()
@@ -273,6 +297,7 @@ if __name__ == '__main__':
     app_sources_df = generate_app_sources(app_instances_df)
     accounts_df = generate_accounts(identities_df, app_instances_df)
     licenses_df = generate_licenses(accounts_df)
+    dates_df = generate_dates() # Generate date dimension
 
     # Save to SQLite
     departments_df.to_sql('dim_departments', conn, if_exists='replace', index=False)
@@ -282,6 +307,7 @@ if __name__ == '__main__':
     app_sources_df.to_sql('fact_app_sources', conn, if_exists='replace', index=False)
     accounts_df.to_sql('fct_accounts', conn, if_exists='replace', index=False)
     licenses_df.to_sql('fct_licenses', conn, if_exists='replace', index=False)
+    dates_df.to_sql('dim_dates', conn, if_exists='replace', index=False) # Save date dimension
 
     print("SaaS management sample data generated successfully!")
     conn.close()
