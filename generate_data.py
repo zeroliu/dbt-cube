@@ -182,8 +182,8 @@ def generate_accounts(identities_df, app_instances_df, n=800):
     active_identities = identities_df[identities_df['status'] == 'ACTIVE']['id'].tolist()
     app_instance_ids = app_instances_df['id'].tolist()
 
-    account_statuses = ['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED']
-    status_weights = [0.75, 0.15, 0.05, 0.05]
+    account_statuses = ['ACTIVE', 'SUSPENDED']
+    status_weights = [0.75, 0.25]
 
     # Track user-app combinations to avoid duplicates
     used_combos = set()
