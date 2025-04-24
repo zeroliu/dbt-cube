@@ -1,5 +1,6 @@
 cube('DateDimension', {
   sqlTable: 'dim_dates',
+  shown: false,
   joins: {
     AccountSnapshots: {
       sql: `${CUBE}.full_date >= ${AccountSnapshots}.effective_from AND (${CUBE}.full_date < ${AccountSnapshots}.effective_to OR ${AccountSnapshots}.effective_to IS NULL)`,

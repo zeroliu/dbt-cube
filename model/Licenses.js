@@ -1,6 +1,6 @@
 cube('Licenses', {
   sqlTable: `fct_licenses`,
-
+  shown: false,
   joins: {
     Accounts: {
       sql: `${CUBE}.account_id = ${Accounts}.id`,

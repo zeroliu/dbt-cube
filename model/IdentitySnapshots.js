@@ -1,6 +1,6 @@
 cube('IdentitySnapshots', {
   sqlTable: `fact_identity_snapshots`,
-
+  title: 'Identities',
   joins: {
     Identities: {
       sql: `${CUBE}.identity_id = ${Identities}.id`,

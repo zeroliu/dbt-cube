@@ -1,6 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Query Builder
+
+A dashboard and metric builder tool for visualizing data from Cube.js backend.
+
+### Getting Started
 
 First, set up your environment variables:
 
@@ -58,3 +62,45 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Project Structure
+
+- `/src/app` - Next.js app router pages
+  - `/metrics` - Metrics management (list, create, edit, view)
+  - `/dashboards` - Dashboard management (list, create, edit, view)
+- `/src/components` - React components
+  - `/dashboard` - Dashboard specific components
+  - `/ui` - Reusable UI components
+- `/src/lib` - Utility functions and API clients
+
+### Known Issues and How to Fix
+
+We have some type errors and missing component import errors that need fixing:
+
+1. **Dynamic Route Params**: In Next.js App Router, params is now a Promise and should be unwrapped with React.use() before accessing properties. Currently fixed by directly using params.id which is still supported.
+
+2. **Missing UI Components**: You might see errors about missing UI component modules. Fix by installing shadcn/ui components:
+
+```bash
+npm install @radix-ui/react-label class-variance-authority lucide-react
+```
+
+3. **Cube.js API Errors**: The code contains references to a Cube.js backend that doesn't exist. For demo purposes, we've implemented mock data generation. To use with a real Cube.js backend, update the connection settings in `src/lib/cube-client.ts`.
+
+4. **Component Typing**: Multiple places need proper TypeScript types for events and data structures. We've fixed most of them but review any linting errors you still see.
+
+### Features
+
+- Create and manage reusable metrics
+- Build dashboards from your metrics
+- AI-powered metric creation
+- Interactive query builder
+- Visualization of metrics data
+
+### Roadmap
+
+- Improve error handling with API connections
+- Add more visualization types
+- Implement real-time dashboard updates
+- Add user permissions system
+- Enhance AI capabilities for data exploration

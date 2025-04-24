@@ -1,6 +1,6 @@
 cube('AppInstanceSnapshots', {
   sqlTable: `fact_app_instance_snapshots`,
-
+  title: 'App Instances',
   joins: {
     Applications: {
       sql: `${CUBE}.app_id = ${Applications}.id`,

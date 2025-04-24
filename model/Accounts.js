@@ -1,5 +1,6 @@
 cube('Accounts', {
   sqlTable: `fct_accounts`,
+  shown: false,
 
   joins: {
     Licenses: {

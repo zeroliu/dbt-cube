@@ -1,5 +1,6 @@
 cube('AppInstances', {
   sqlTable: `dim_domain_applications`, // Direct table name instead of DBT ref
+  shown: false,
 
   joins: {
     Accounts: {

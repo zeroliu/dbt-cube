@@ -1,5 +1,6 @@
 cube('AppSources', {
   sqlTable: `fact_app_sources`,
+  shown: false,
 
   joins: {
     AppInstances: {

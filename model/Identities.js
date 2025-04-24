@@ -1,6 +1,6 @@
 cube('Identities', {
   sqlTable: `dim_identities`, // Direct table name instead of DBT ref
-
+  shown: false,
   joins: {
     Managers: {
       // Self-join for manager hierarchy/name

@@ -1,5 +1,6 @@
 cube('AccountSnapshots', {
   sqlTable: `fact_account_snapshots`,
+  title: 'Accounts',
 
   joins: {
     Accounts: {
@@ -19,7 +20,13 @@ cube('AccountSnapshots', {
   measures: {
     count: {
       type: `count`,
-      drillMembers: [id, effectiveFrom, effectiveTo, accountId, accountStatus],
+      drillMembers: [
+        id,
+        IdentitySnapshots.email,
+        IdentitySnapshots.fullName,
+        AppInstanceSnapshots.appName,
+        AppInstanceSnapshots.appCategory,
+      ],
     },
   },
 
