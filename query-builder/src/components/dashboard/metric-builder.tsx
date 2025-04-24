@@ -4,7 +4,12 @@ import {useState, useEffect, ChangeEvent, useMemo} from 'react';
 import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
 import {useCubeQuery} from '@cubejs-client/react';
-import {Metric, fetchCubeMetadata, CubeMetadata} from '@/lib/cube-client';
+import {
+  MetricConfig,
+  fetchCubeMetadata,
+  CubeMetadata,
+  MetricValue,
+} from '@/lib/cube-client';
 import {Input} from '@/components/ui/input';
 import {Button} from '@/components/ui/button';
 import {
@@ -25,11 +30,11 @@ import {
 } from '@/components/ui/card';
 import {Textarea} from '@/components/ui/textarea';
 import {Label} from '@/components/ui/label';
-import {Loader2, Plus, X} from 'lucide-react';
+import {Loader2, Plus, X, ArrowUpRight, ArrowDownRight} from 'lucide-react';
 
 interface MetricBuilderProps {
-  initialMetric?: Metric;
-  onSave?: (metric: Metric) => void;
+  initialMetric?: MetricConfig;
+  onSave?: (metric: MetricConfig) => void;
 }
 
 type TableDataType = Record<string, string | number | boolean>;
@@ -42,10 +47,10 @@ export default function MetricBuilder({
   const [isLoading, setIsLoading] = useState(false);
   const [cubeMetadata, setCubeMetadata] = useState<CubeMetadata | null>(null);
   const [resultsPreview, setResultsPreview] = useState<TableDataType[]>([]);
-  const [metricValue, setMetricValue] = useState<number | null>(null);
+  const [trendData, setTrendData] = useState<MetricValue | null>(null);
 
   // Form state
-  const [metric, setMetric] = useState<Metric>(
+  const [metric, setMetric] = useState<MetricConfig>(
     initialMetric ||
       ({
         id: uuidv4(),
@@ -56,10 +61,15 @@ export default function MetricBuilder({
         visibleColumns: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      } as Metric)
+        trendData: {
+          value: 0,
+          previousValue: null,
+          change: 0,
+          changePercentage: 0,
+          period: 'week',
+        },
+      } as MetricConfig)
   );
-
-  console.log(metric);
 
   // Build Cube.js query based on current metric configuration
   const cubeQuery = useMemo(() => {
@@ -68,21 +78,19 @@ export default function MetricBuilder({
     }
 
     return {
-      measures: [`${metric.entityType}.count`],
+      measures: [
+        `${metric.entityType}.currentCount`,
+        `${metric.entityType}.lastWeekCount`,
+      ],
       dimensions: [],
-      filters: [
-        {
-          member: `${metric.entityType}.isCurrent`,
-          operator: 'equals',
-          values: ['1'],
-        },
-        ...metric.filters.map((filter) => ({
+      filters: metric.filters.map(
+        (filter: {member: string; operator: string; values: string[]}) => ({
           member: filter.member,
           operator: filter.operator,
           values: filter.values,
-        })),
-      ],
-      limit: 5,
+        })
+      ),
+      limit: 1,
     };
   }, [metric]);
 
@@ -111,11 +119,13 @@ export default function MetricBuilder({
           operator: 'equals',
           values: ['1'],
         },
-        ...metric.filters.map((filter) => ({
-          member: filter.member,
-          operator: filter.operator,
-          values: filter.values,
-        })),
+        ...metric.filters.map(
+          (filter: {member: string; operator: string; values: string[]}) => ({
+            member: filter.member,
+            operator: filter.operator,
+            values: filter.values,
+          })
+        ),
       ],
       limit: 5,
     };
@@ -158,23 +168,78 @@ export default function MetricBuilder({
 
       // Extract metric value (e.g., count measure)
       if (tableData.length > 0) {
-        const countMeasure = `${metric.entityType}.count`;
+        const countMeasure = `${metric.entityType}.currentCount`;
+        const lastWeekCountMeasure = `${metric.entityType}.lastWeekCount`;
         const countCol = Object.keys(tableData[0]).find(
           (key) => key === countMeasure
         );
+        const lastWeekCountCol = Object.keys(tableData[0]).find(
+          (key) => key === lastWeekCountMeasure
+        );
+
+        let currentValue: number | null = null;
+        let previousValue: number | null = null;
 
         if (countCol && tableData[0][countCol]) {
-          setMetricValue(Number(tableData[0][countCol]));
+          currentValue = Number(tableData[0][countCol]);
         } else {
           console.log('No count column found');
-          setMetricValue(0);
+          currentValue = 0;
+        }
+
+        if (lastWeekCountCol && tableData[0][lastWeekCountCol]) {
+          previousValue = Number(tableData[0][lastWeekCountCol]);
+        } else {
+          console.log('No last week count column found');
+        }
+
+        // Calculate trend data
+        if (currentValue !== null) {
+          let change = 0;
+          let changePercentage = 0;
+
+          if (previousValue !== null) {
+            change = currentValue - previousValue;
+            changePercentage =
+              previousValue !== 0
+                ? Math.round((change / previousValue) * 100)
+                : 0;
+          }
+
+          setTrendData({
+            value: currentValue,
+            previousValue,
+            change,
+            changePercentage,
+            period: 'week',
+          });
+        } else {
+          setTrendData({
+            value: 0,
+            previousValue: null,
+            change: 0,
+            changePercentage: 0,
+            period: 'week',
+          });
         }
       } else {
-        setMetricValue(0);
+        setTrendData({
+          value: 0,
+          previousValue: null,
+          change: 0,
+          changePercentage: 0,
+          period: 'week',
+        });
       }
     } catch (err) {
       console.error('Failed to process result set', err);
-      setMetricValue(0);
+      setTrendData({
+        value: 0,
+        previousValue: null,
+        change: 0,
+        changePercentage: 0,
+        period: 'week',
+      });
     }
   }, [resultSet, metric.entityType]);
 
@@ -229,7 +294,7 @@ export default function MetricBuilder({
 
   const handleToggleColumn = (column: string) => {
     const updatedColumns = metric.visibleColumns.includes(column)
-      ? metric.visibleColumns.filter((col) => col !== column)
+      ? metric.visibleColumns.filter((col: string) => col !== column)
       : [...metric.visibleColumns, column];
 
     setMetric({
@@ -240,12 +305,18 @@ export default function MetricBuilder({
 
   const handleSave = () => {
     // Update timestamps
-    const updatedMetric: Metric = {
+    const updatedMetric: MetricConfig = {
       ...metric,
       updatedAt: new Date().toISOString(),
-      trendData: {
-        value: metricValue || 0,
-        change: 0, // In a real app, this would be calculated from historical data
+    };
+
+    // Store the trend data in localStorage separately
+    const metricWithTrendData = {
+      ...updatedMetric,
+      trendData: trendData || {
+        value: 0,
+        previousValue: null,
+        change: 0,
         changePercentage: 0,
         period: 'week',
       },
@@ -253,19 +324,19 @@ export default function MetricBuilder({
 
     // Save to localStorage
     const savedMetrics = localStorage.getItem('metrics');
-    let metrics: Metric[] = [];
+    let metrics: MetricConfig[] = [];
 
     if (savedMetrics) {
       metrics = JSON.parse(savedMetrics);
       const existingIndex = metrics.findIndex((m) => m.id === updatedMetric.id);
 
       if (existingIndex >= 0) {
-        metrics[existingIndex] = updatedMetric;
+        metrics[existingIndex] = metricWithTrendData;
       } else {
-        metrics.push(updatedMetric);
+        metrics.push(metricWithTrendData);
       }
     } else {
-      metrics = [updatedMetric];
+      metrics = [metricWithTrendData];
     }
 
     localStorage.setItem('metrics', JSON.stringify(metrics));
@@ -390,14 +461,25 @@ export default function MetricBuilder({
                 {isLoading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                 ) : (
-                  metricValue || '0'
+                  trendData?.value || '0'
                 )}
               </div>
-              <div className="w-full h-24 bg-gray-50 rounded flex items-center justify-center">
-                <span className="text-gray-400">
-                  Trend visualization will appear here
-                </span>
-              </div>
+
+              {trendData?.previousValue !== null && trendData && (
+                <div
+                  className={`flex items-center ${
+                    trendData.change >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                  {trendData.change >= 0 ? (
+                    <ArrowUpRight className="h-5 w-5 mr-1" />
+                  ) : (
+                    <ArrowDownRight className="h-5 w-5 mr-1" />
+                  )}
+                  <span className="text-lg font-medium">
+                    {trendData.changePercentage}% ({trendData.previousValue})
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -413,73 +495,80 @@ export default function MetricBuilder({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {metric.filters.map((filter, index) => (
-              <div key={index} className="flex items-start space-x-2">
-                <div className="grid grid-cols-3 gap-2 flex-1">
-                  <Select
-                    value={filter.member}
-                    onValueChange={(value) =>
-                      handleFilterChange(index, 'member', value)
-                    }>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select field" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {visibleCubes?.map((cube) => (
-                        <SelectGroup key={cube.name}>
-                          <SelectLabel>{cube.title}</SelectLabel>
-                          {cube.dimensions.map((dimension) => (
-                            <SelectItem
-                              key={dimension.name}
-                              value={dimension.name}>
-                              {dimension.title}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {metric.filters.map(
+              (
+                filter: {member: string; operator: string; values: string[]},
+                index: number
+              ) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <div className="grid grid-cols-3 gap-2 flex-1">
+                    <Select
+                      value={filter.member}
+                      onValueChange={(value) =>
+                        handleFilterChange(index, 'member', value)
+                      }>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {visibleCubes?.map((cube) => (
+                          <SelectGroup key={cube.name}>
+                            <SelectLabel>{cube.title}</SelectLabel>
+                            {cube.dimensions.map((dimension) => (
+                              <SelectItem
+                                key={dimension.name}
+                                value={dimension.name}>
+                                {dimension.title}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                  <Select
-                    value={filter.operator}
-                    onValueChange={(value) =>
-                      handleFilterChange(index, 'operator', value)
-                    }>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select operator" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="equals">Equals</SelectItem>
-                      <SelectItem value="notEquals">Not Equals</SelectItem>
-                      <SelectItem value="contains">Contains</SelectItem>
-                      <SelectItem value="gt">Greater Than</SelectItem>
-                      <SelectItem value="lt">Less Than</SelectItem>
-                      <SelectItem value="gte">Greater Than or Equal</SelectItem>
-                      <SelectItem value="lte">Less Than or Equal</SelectItem>
-                      <SelectItem value="set">Is Set</SelectItem>
-                      <SelectItem value="notSet">Is Not Set</SelectItem>
-                      <SelectItem value="beforeDate">Before Date</SelectItem>
-                      <SelectItem value="afterDate">After Date</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Select
+                      value={filter.operator}
+                      onValueChange={(value) =>
+                        handleFilterChange(index, 'operator', value)
+                      }>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select operator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="equals">Equals</SelectItem>
+                        <SelectItem value="notEquals">Not Equals</SelectItem>
+                        <SelectItem value="contains">Contains</SelectItem>
+                        <SelectItem value="gt">Greater Than</SelectItem>
+                        <SelectItem value="lt">Less Than</SelectItem>
+                        <SelectItem value="gte">
+                          Greater Than or Equal
+                        </SelectItem>
+                        <SelectItem value="lte">Less Than or Equal</SelectItem>
+                        <SelectItem value="set">Is Set</SelectItem>
+                        <SelectItem value="notSet">Is Not Set</SelectItem>
+                        <SelectItem value="beforeDate">Before Date</SelectItem>
+                        <SelectItem value="afterDate">After Date</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                  <Input
-                    value={filter.values[0] || ''}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      handleFilterChange(index, 'values', [e.target.value])
-                    }
-                    placeholder="Value"
-                  />
+                    <Input
+                      value={filter.values[0] || ''}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        handleFilterChange(index, 'values', [e.target.value])
+                      }
+                      placeholder="Value"
+                    />
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveFilter(index)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveFilter(index)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+              )
+            )}
 
             <Button
               variant="outline"

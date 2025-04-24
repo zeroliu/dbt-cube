@@ -3,7 +3,7 @@
 import {useState, useEffect} from 'react';
 import {useRouter, useParams} from 'next/navigation';
 import MetricBuilder from '@/components/dashboard/metric-builder';
-import {Metric} from '@/lib/cube-client';
+import {MetricConfig} from '@/lib/cube-client';
 import {Loader2} from 'lucide-react';
 
 export default function EditMetricPage() {
@@ -11,7 +11,7 @@ export default function EditMetricPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [metric, setMetric] = useState<Metric | null>(null);
+  const [metricConfig, setMetricConfig] = useState<MetricConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load metric from localStorage on mount
@@ -20,10 +20,10 @@ export default function EditMetricPage() {
     if (savedMetrics) {
       try {
         const metrics = JSON.parse(savedMetrics);
-        const foundMetric = metrics.find((m: Metric) => m.id === id);
+        const foundMetric = metrics.find((m: MetricConfig) => m.id === id);
 
         if (foundMetric) {
-          setMetric(foundMetric);
+          setMetricConfig(foundMetric);
         } else {
           // Metric not found, redirect to list
           router.push('/metrics');
@@ -39,12 +39,12 @@ export default function EditMetricPage() {
     }
   }, [id, router]);
 
-  const handleSave = (updatedMetric: Metric) => {
+  const handleSave = (updatedMetric: MetricConfig) => {
     // Navigate back to metric details
     router.push(`/metrics/${updatedMetric.id}`);
   };
 
-  if (isLoading || !metric) {
+  if (isLoading || !metricConfig) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -56,8 +56,10 @@ export default function EditMetricPage() {
   return (
     <div>
       <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6">Edit Metric: {metric.name}</h1>
-        <MetricBuilder initialMetric={metric} onSave={handleSave} />
+        <h1 className="text-3xl font-bold mb-6">
+          Edit Metric: {metricConfig.name}
+        </h1>
+        <MetricBuilder initialMetric={metricConfig} onSave={handleSave} />
       </div>
     </div>
   );

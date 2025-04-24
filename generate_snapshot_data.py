@@ -93,7 +93,7 @@ for account in accounts:
         'app_instance_id': app_instance_id,
         'account_status': status,
         'last_activity_dt': last_activity,
-        'effective_from': end_date_str,
+        'effective_from': start_date_str,  # Set to one month ago
         'effective_to': None,
         'is_current': 1,
         'is_matched': is_matched,
@@ -118,7 +118,7 @@ for identity in identities:
         'identity_id': identity_id,
         'identity_status': status,
         'created_dt': created_dt,
-        'effective_from': end_date_str,
+        'effective_from': start_date_str,  # Set to one month ago
         'effective_to': None,
         'is_current': 1
     }
@@ -142,7 +142,7 @@ for app_instance in app_instances:
         'app_id': app_id,
         'instance_status': status,
         'created_dt': created_dt,
-        'effective_from': end_date_str,
+        'effective_from': start_date_str,  # Set to one month ago
         'effective_to': None,
         'is_current': 1,
         'is_shadow_it': is_shadow_it
@@ -184,16 +184,14 @@ for app_instance in app_instances:
 
 # Helper function to add historical SCD Type 2 record
 def add_historical_record(table_name: str, entity_id: int, record: Dict[str, Any],
-                         effective_date: str, previous_date: str, entity_id_column: str) -> None:
-    # Find the most recent record for this entity with the given effective date
+                         effective_date: str, entity_id_column: str):
+    # When going backwards in time, we're creating records that are earlier
+    # We need to check if this is the earliest record we've seen for this entity
     c.execute(f"SELECT id FROM {table_name} WHERE {entity_id_column} = ? AND effective_from = ?",
-             (entity_id, previous_date))
-    recent_record = c.fetchone()
-
-    if recent_record:
-        # Update the previous record to point to this new historical record
-        c.execute(f"UPDATE {table_name} SET effective_to = ? WHERE id = ?",
-                 (effective_date, recent_record[0]))
+             (entity_id, start_date_str))
+    last_record = c.fetchone()
+    c.execute(f"UPDATE {table_name} SET effective_from = ? WHERE id = ?",
+             (effective_date, last_record[0]))
 
     # Insert the new historical record
     columns = ', '.join(record.keys())
@@ -251,15 +249,15 @@ while current_date >= start_date:
                 'app_instance_id': app_instance_id,
                 'account_status': historical_state['status'],
                 'last_activity_dt': historical_state['last_activity'],
-                'effective_from': current_date_str,
-                'effective_to': previous_date_str,
+                'effective_from': start_date_str,
+                'effective_to': current_date_str,
                 'is_current': 0,
                 'is_matched': historical_state['is_matched'],
                 'is_admin': historical_state['is_admin']
             }
 
             add_historical_record('fact_account_snapshots', account_id, record,
-                                 previous_date_str, previous_date_str, 'account_id')
+                                 current_date_str, 'account_id')
 
             # Update the current state (for the next iteration)
             account_states[account_id] = historical_state
@@ -281,13 +279,13 @@ while current_date >= start_date:
                 'identity_id': identity_id,
                 'identity_status': historical_state['status'],
                 'created_dt': historical_state['created_dt'],
-                'effective_from': current_date_str,
-                'effective_to': previous_date_str,
+                'effective_from': start_date_str,  # Set to the current iteration date
+                'effective_to': current_date_str,
                 'is_current': 0
             }
 
             add_historical_record('fact_identity_snapshots', identity_id, record,
-                                 previous_date_str, previous_date_str, 'identity_id')
+                                 current_date_str, 'identity_id')
 
             # Update the current state (for the next iteration)
             identity_states[identity_id] = historical_state
@@ -319,14 +317,14 @@ while current_date >= start_date:
                 'app_id': app_id,
                 'instance_status': historical_state['status'],
                 'created_dt': historical_state['created_dt'],
-                'effective_from': current_date_str,
-                'effective_to': previous_date_str,
+                'effective_from': start_date_str,
+                'effective_to': current_date_str,
                 'is_current': 0,
                 'is_shadow_it': historical_state['is_shadow_it']
             }
 
             add_historical_record('fact_app_instance_snapshots', instance_id, record,
-                                 previous_date_str, previous_date_str, 'instance_id')
+                                 current_date_str, 'instance_id')
 
             # Update the current state (for the next iteration)
             app_instance_states[instance_id] = historical_state

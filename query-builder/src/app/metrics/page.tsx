@@ -2,12 +2,12 @@
 
 import {useState, useEffect} from 'react';
 import Link from 'next/link';
-import {Metric} from '@/lib/cube-client';
+import {MetricConfig} from '@/lib/cube-client';
 import {Button} from '@/components/ui/button';
 import {ArrowUpRight, ArrowDownRight, Pencil, Trash2, Bell} from 'lucide-react';
 
 export default function MetricsPage() {
-  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [metrics, setMetrics] = useState<MetricConfig[]>([]);
 
   // Load metrics from localStorage on mount
   useEffect(() => {
@@ -19,69 +19,7 @@ export default function MetricsPage() {
         console.error('Failed to parse saved metrics:', e);
       }
     } else {
-      // Initialize with some sample data if no metrics are saved
-      const demoMetrics: Metric[] = [
-        {
-          id: '1',
-          name: 'Active Applications',
-          description: 'Count of all active applications in the system',
-          entityType: 'Applications',
-          filters: [
-            {
-              member: 'Applications.status',
-              operator: 'equals',
-              values: ['active'],
-            },
-          ],
-          visibleColumns: [
-            'Applications.id',
-            'Applications.name',
-            'Applications.createdAt',
-          ],
-          createdAt: new Date(
-            Date.now() - 7 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          updatedAt: new Date().toISOString(),
-          trendData: {
-            value: 245,
-            change: 12,
-            changePercentage: 5.1,
-            period: 'week',
-          },
-        },
-        {
-          id: '2',
-          name: 'Inactive Users',
-          description: 'Users who have not logged in for the last 90 days',
-          entityType: 'Identities',
-          filters: [
-            {
-              member: 'Identities.lastLoginAt',
-              operator: 'beforeDate',
-              values: ['90d'],
-            },
-          ],
-          visibleColumns: [
-            'Identities.id',
-            'Identities.email',
-            'Identities.lastLoginAt',
-          ],
-          createdAt: new Date(
-            Date.now() - 14 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          updatedAt: new Date(
-            Date.now() - 2 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          trendData: {
-            value: 532,
-            change: -23,
-            changePercentage: -4.1,
-            period: 'month',
-          },
-        },
-      ];
-      setMetrics(demoMetrics);
-      localStorage.setItem('metrics', JSON.stringify(demoMetrics));
+      setMetrics([]);
     }
   }, []);
 
@@ -161,19 +99,15 @@ export default function MetricsPage() {
                       ) : (
                         <ArrowDownRight className="h-4 w-4 mr-1" />
                       )}
-                      <span>{metric.trendData?.changePercentage}%</span>
-                    </div>
-                  </div>
-
-                  <div className="w-24 h-10 bg-gray-50 rounded">
-                    {/* Placeholder for sparkline chart */}
-                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                      Trend chart
+                      <span>
+                        {metric.trendData?.changePercentage}% (
+                        {metric.trendData?.previousValue})
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="ml-6 flex items-start space-x-2">
+                <div className="ml-6 flex items-start">
                   <Link href={`/metrics/${metric.id}/edit`}>
                     <Button variant="ghost" size="icon">
                       <Pencil className="h-4 w-4" />

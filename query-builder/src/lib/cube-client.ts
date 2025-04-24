@@ -63,7 +63,14 @@ export interface Widget {
   segments: string[];
 }
 
-export interface Metric {
+export interface MetricValue {
+  value: number;
+  previousValue: number | null;
+  change: number;
+  changePercentage: number;
+  period: 'day' | 'week' | 'month';
+}
+export interface MetricConfig {
   id: string;
   name: string;
   description: string;
@@ -76,12 +83,7 @@ export interface Metric {
   visibleColumns: string[]; // Columns to display in the Results Preview
   createdAt: string;
   updatedAt: string;
-  trendData?: {
-    value: number;
-    change: number;
-    changePercentage: number;
-    period: 'day' | 'week' | 'month';
-  };
+  trendData: MetricValue;
 }
 
 export async function fetchCubeMetadata(): Promise<CubeMetadata> {
@@ -108,7 +110,9 @@ export async function queryCubeData(
     limit,
   };
 
-  const resultSet = await cubejsApi.load(query as any);
+  const resultSet = await cubejsApi.load(
+    query as unknown as Parameters<typeof cubejsApi.load>[0]
+  );
   return resultSet.tablePivot();
 }
 

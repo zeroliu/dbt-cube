@@ -3,7 +3,7 @@
 import {useState, useEffect, useMemo} from 'react';
 import {useRouter, useParams} from 'next/navigation';
 import Link from 'next/link';
-import {Metric} from '@/lib/cube-client';
+import {MetricConfig, MetricValue} from '@/lib/cube-client';
 import {useCubeQuery} from '@cubejs-client/react';
 import {Button} from '@/components/ui/button';
 import {
@@ -22,10 +22,10 @@ export default function MetricDetailsPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [metric, setMetric] = useState<Metric | null>(null);
+  const [metricConfig, setMetricConfig] = useState<MetricConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resultsPreview, setResultsPreview] = useState<ResultRowType[]>([]);
-  const [metricValue, setMetricValue] = useState<number | null>(null);
+  const [trendData, setTrendData] = useState<MetricValue | null>(null);
 
   // Load metric from localStorage on mount
   useEffect(() => {
@@ -33,10 +33,10 @@ export default function MetricDetailsPage() {
     if (savedMetrics) {
       try {
         const metrics = JSON.parse(savedMetrics);
-        const foundMetric = metrics.find((m: Metric) => m.id === id);
+        const foundMetric = metrics.find((m: MetricConfig) => m.id === id);
 
         if (foundMetric) {
-          setMetric(foundMetric);
+          setMetricConfig(foundMetric);
         } else {
           // Metric not found, redirect to list
           router.push('/metrics');
@@ -53,52 +53,45 @@ export default function MetricDetailsPage() {
 
   // Build Cube.js query based on metric configuration
   const cubeQuery = useMemo(() => {
-    if (!metric?.entityType) {
+    if (!metricConfig?.entityType) {
       return null;
     }
 
     return {
-      measures: [`${metric.entityType}.count`],
-      dimensions: [],
-      filters: [
-        {
-          member: `${metric.entityType}.isCurrent`,
-          operator: 'equals',
-          values: ['1'],
-        },
-        ...metric.filters.map((filter) => ({
-          member: filter.member,
-          operator: filter.operator,
-          values: filter.values,
-        })),
+      measures: [
+        `${metricConfig.entityType}.currentCount`,
+        `${metricConfig.entityType}.lastWeekCount`,
       ],
+      dimensions: [],
+      filters: metricConfig.filters.map((filter) => ({
+        member: filter.member,
+        operator: filter.operator,
+        values: filter.values,
+      })),
       limit: 1,
     };
-  }, [metric]);
+  }, [metricConfig]);
 
   // Build preview query with all visible dimensions and same filters
   const buildPreviewQuery = useMemo(() => {
-    if (!metric?.entityType) {
+    if (!metricConfig?.entityType) {
       return null;
     }
 
-    const dimensions = metric.visibleColumns.filter(
+    const dimensions = metricConfig.visibleColumns.filter(
       (col) => !col.includes('measures')
-    );
-    const measures = metric.visibleColumns.filter((col) =>
-      col.includes('measures')
     );
 
     return {
       dimensions,
-      measures: measures.length > 0 ? measures : [`${metric.entityType}.count`],
+      measures: [],
       filters: [
         {
-          member: `${metric.entityType}.isCurrent`,
+          member: `${metricConfig.entityType}.isCurrent`,
           operator: 'equals',
           values: ['1'],
         },
-        ...metric.filters.map((filter) => ({
+        ...metricConfig.filters.map((filter) => ({
           member: filter.member,
           operator: filter.operator,
           values: filter.values,
@@ -106,7 +99,7 @@ export default function MetricDetailsPage() {
       ],
       limit: 5,
     };
-  }, [metric]);
+  }, [metricConfig]);
 
   // Use Cube.js React hook for data fetching
   const {resultSet, isLoading: cubeQueryLoading} = useCubeQuery(
@@ -122,32 +115,86 @@ export default function MetricDetailsPage() {
 
   // Process query results when available
   useEffect(() => {
-    if (!resultSet || !metric) return;
+    if (!resultSet || !metricConfig) return;
 
     try {
       const tableData = resultSet.tablePivot();
 
       // Extract metric value (e.g., count measure)
       if (tableData.length > 0) {
-        const countMeasure = `${metric.entityType}.count`;
+        const countMeasure = `${metricConfig.entityType}.currentCount`;
+        const lastWeekCountMeasure = `${metricConfig.entityType}.lastWeekCount`;
         const countCol = Object.keys(tableData[0]).find(
           (key) => key === countMeasure
         );
+        const lastWeekCountCol = Object.keys(tableData[0]).find(
+          (key) => key === lastWeekCountMeasure
+        );
+
+        let currentValue: number | null = null;
+        let previousValue: number | null = null;
 
         if (countCol && tableData[0][countCol]) {
-          setMetricValue(Number(tableData[0][countCol]));
+          currentValue = Number(tableData[0][countCol]);
         } else {
           console.log('No count column found');
-          setMetricValue(0);
+        }
+
+        if (lastWeekCountCol && tableData[0][lastWeekCountCol]) {
+          previousValue = Number(tableData[0][lastWeekCountCol]);
+        } else {
+          console.log('No last week count column found');
+        }
+
+        // Calculate trend data
+        if (currentValue !== null) {
+          let change = 0;
+          let changePercentage = 0;
+
+          if (previousValue !== null) {
+            change = currentValue - previousValue;
+            changePercentage =
+              previousValue !== 0
+                ? Math.round((change / previousValue) * 100)
+                : 0;
+          }
+
+          setTrendData({
+            value: currentValue,
+            previousValue,
+            change,
+            changePercentage,
+            period: 'week',
+          });
+        } else {
+          setTrendData({
+            value: 0,
+            previousValue: null,
+            change: 0,
+            changePercentage: 0,
+            period: 'week',
+          });
         }
       } else {
-        setMetricValue(0);
+        setTrendData({
+          value: 0,
+          previousValue: null,
+          change: 0,
+          changePercentage: 0,
+          period: 'week',
+        });
       }
     } catch (err) {
       console.error('Failed to process result set', err);
-      setMetricValue(metric.trendData?.value || 0);
+      setTrendData({
+        value: 0,
+        previousValue: null,
+        change: 0,
+        changePercentage: 0,
+        period: 'week',
+      });
     }
-  }, [resultSet, metric]);
+  }, [resultSet, metricConfig]);
 
   // Process preview results when available
   useEffect(() => {
@@ -164,7 +211,7 @@ export default function MetricDetailsPage() {
     }
   }, [previewResultSet]);
 
-  if (!metric) {
+  if (!metricConfig) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -177,19 +224,19 @@ export default function MetricDetailsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{metric.name}</h1>
-          <p className="text-gray-500">{metric.description}</p>
+          <h1 className="text-3xl font-bold">{metricConfig.name}</h1>
+          <p className="text-gray-500">{metricConfig.description}</p>
           <div className="mt-2 text-sm text-gray-600">
             <span className="inline-flex items-center bg-gray-100 px-2 py-1 rounded mr-2">
-              {metric.entityType}
+              {metricConfig.entityType}
             </span>
             <span>
-              Updated {new Date(metric.updatedAt).toLocaleDateString()}
+              Updated {new Date(metricConfig.updatedAt).toLocaleDateString()}
             </span>
           </div>
         </div>
         <div className="flex space-x-2">
-          <Link href={`/metrics/${metric.id}/edit`}>
+          <Link href={`/metrics/${metricConfig.id}/edit`}>
             <Button variant="outline">
               <Pencil className="h-4 w-4 mr-2" />
               Edit Metric
@@ -213,25 +260,22 @@ export default function MetricDetailsPage() {
                 {cubeQueryLoading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                 ) : (
-                  metricValue || 'N/A'
+                  trendData?.value || 'N/A'
                 )}
               </div>
 
-              {metric.trendData && (
+              {trendData?.previousValue !== null && trendData && (
                 <div
                   className={`flex items-center ${
-                    metric.trendData.change >= 0
-                      ? 'text-green-600'
-                      : 'text-red-600'
+                    trendData.change >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
-                  {metric.trendData.change >= 0 ? (
+                  {trendData.change >= 0 ? (
                     <ArrowUpRight className="h-5 w-5 mr-1" />
                   ) : (
                     <ArrowDownRight className="h-5 w-5 mr-1" />
                   )}
                   <span className="text-lg font-medium">
-                    {metric.trendData.changePercentage}% from last{' '}
-                    {metric.trendData.period}
+                    {trendData.changePercentage}% ({trendData.previousValue})
                   </span>
                 </div>
               )}
@@ -311,7 +355,7 @@ export default function MetricDetailsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-medium text-gray-900 mb-2">Entity Type</h3>
-              <p>{metric.entityType}</p>
+              <p>{metricConfig.entityType}</p>
             </div>
 
             <div>
@@ -319,7 +363,7 @@ export default function MetricDetailsPage() {
                 Visible Columns
               </h3>
               <div className="flex flex-wrap gap-1">
-                {metric.visibleColumns.map((column) => (
+                {metricConfig.visibleColumns.map((column) => (
                   <span
                     key={column}
                     className="inline-flex items-center bg-gray-100 px-2 py-1 rounded text-sm">
@@ -331,9 +375,9 @@ export default function MetricDetailsPage() {
 
             <div className="col-span-2">
               <h3 className="font-medium text-gray-900 mb-2">Filters</h3>
-              {metric.filters.length > 0 ? (
+              {metricConfig.filters.length > 0 ? (
                 <ul className="space-y-1">
-                  {metric.filters.map((filter, index) => (
+                  {metricConfig.filters.map((filter, index) => (
                     <li key={index} className="text-sm">
                       <span className="font-medium">
                         {filter.member.split('.')[1]}

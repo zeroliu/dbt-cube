@@ -28,6 +28,22 @@ cube('AccountSnapshots', {
         AppInstanceSnapshots.appCategory,
       ],
     },
+    currentCount: {
+      type: `count`,
+      filters: [
+        {
+          sql: `${CUBE}.is_current = 1`,
+        },
+      ],
+    },
+    lastWeekCount: {
+      type: `count`,
+      filters: [
+        {
+          sql: `(${CUBE}.effective_from <= date('now', '-7 days') AND (${CUBE}.effective_to > date('now', '-7 days') OR ${CUBE}.effective_to IS NULL))`,
+        },
+      ],
+    },
   },
 
   dimensions: {
