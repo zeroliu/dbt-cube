@@ -21,6 +21,7 @@ c.execute('''
 CREATE TABLE IF NOT EXISTS fact_account_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
     app_instance_id INTEGER NOT NULL,
     account_status TEXT NOT NULL,
     last_activity_dt TEXT,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS fact_account_snapshots (
     is_matched BOOLEAN,
     is_admin BOOLEAN,
     FOREIGN KEY (account_id) REFERENCES fct_accounts(id),
+    FOREIGN KEY (user_id) REFERENCES dim_identities(id),
     FOREIGN KEY (app_instance_id) REFERENCES dim_domain_applications(id)
 )
 ''')
@@ -87,6 +89,7 @@ for account in accounts:
     # Create current record at end_date
     record = {
         'account_id': account_id,
+        'user_id': user_id,
         'app_instance_id': app_instance_id,
         'account_status': status,
         'last_activity_dt': last_activity,
@@ -156,6 +159,7 @@ for account in accounts:
     account_id, user_id, app_instance_id, status, last_activity, is_matched, is_admin = account
     account_states[account_id] = {
         'status': status,
+        'user_id': user_id,
         'last_activity': last_activity,
         'is_matched': is_matched,
         'is_admin': is_admin
@@ -243,6 +247,7 @@ while current_date >= start_date:
         if make_change:
             record = {
                 'account_id': account_id,
+                'user_id': current_state['user_id'],
                 'app_instance_id': app_instance_id,
                 'account_status': historical_state['status'],
                 'last_activity_dt': historical_state['last_activity'],

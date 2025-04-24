@@ -16,6 +16,12 @@ cube('IdentitySnapshots', {
   },
 
   dimensions: {
+    id: {
+      sql: `id`,
+      type: `number`,
+      primaryKey: true,
+      shown: true,
+    },
     identityId: {
       sql: `identity_id`,
       type: `number`,

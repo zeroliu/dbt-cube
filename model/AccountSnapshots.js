@@ -11,7 +11,7 @@ cube('AccountSnapshots', {
       relationship: `many_to_one`,
     },
     IdentitySnapshots: {
-      sql: `${CUBE}.account_id = ${IdentitySnapshots}.identity_id`,
+      sql: `${CUBE}.user_id = ${IdentitySnapshots}.identity_id`,
       relationship: `many_to_one`,
     },
   },
@@ -20,24 +20,6 @@ cube('AccountSnapshots', {
     count: {
       type: `count`,
       drillMembers: [id, effectiveFrom, effectiveTo, accountId, accountStatus],
-    },
-    currentAccountsCount: {
-      type: `count`,
-      filters: [{sql: `${CUBE}.is_current = 1`}],
-      drillMembers: [id, effectiveFrom, accountId, accountStatus],
-    },
-    inactiveAccountsCount: {
-      type: `count`,
-      filters: [
-        {sql: `${CUBE}.account_status = 'INACTIVE'`},
-        {sql: `${CUBE}.is_current = 1`},
-      ],
-      drillMembers: [effectiveFrom, accountId, AppInstances.appName],
-    },
-    inactiveRatio: {
-      type: `number`,
-      sql: `CAST(${inactiveAccountsCount} AS FLOAT) / NULLIF(${currentAccountsCount}, 0)`,
-      format: `percent`,
     },
   },
 
@@ -48,7 +30,7 @@ cube('AccountSnapshots', {
       primaryKey: true,
     },
     userId: {
-      sql: `${Accounts.userId}`,
+      sql: `user_id`,
       type: `number`,
       shown: false,
     },
@@ -100,15 +82,6 @@ cube('AccountSnapshots', {
   },
 
   segments: {
-    isInactive7Days: {
-      sql: `date(${CUBE}.effective_from) > date(${CUBE}.last_activity_dt, '+7 days')`,
-    },
-    isInactive90Days: {
-      sql: `date(${CUBE}.effective_from) > date(${CUBE}.last_activity_dt, '+90 days')`,
-    },
-    isInactive30Days: {
-      sql: `date(${CUBE}.effective_from) > date(${CUBE}.last_activity_dt, '+30 days')`,
-    },
     currentRecords: {
       sql: `${CUBE}.is_current = 1`,
     },
