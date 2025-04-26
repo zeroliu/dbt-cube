@@ -4,10 +4,10 @@ import {useState, useEffect, useRef} from 'react';
 import {fetchCubeMetadata, cubejsApi, CubeMetadata} from '@/lib/cube-client';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Loader2, Send, Save, AlertTriangle} from 'lucide-react';
 import {v4 as uuidv4} from 'uuid';
 import type {Query} from '@cubejs-client/core';
+import ReactMarkdown from 'react-markdown';
 import {
   generateQuery,
   generateInsights,
@@ -169,7 +169,7 @@ export default function ChatAgent() {
         // 3. Process the results using the LLM
         const insightText = await generateInsights(data, question, query);
 
-        // Create the insight result
+        // Create the insight result with markdown formatting
         const insight: InsightResult = {
           text: insightText,
           tableData: data,
@@ -301,9 +301,13 @@ export default function ChatAgent() {
                 </>
               ) : (
                 <div className="w-full">
-                  <div className="whitespace-pre-line mb-2">
-                    {message.content}
-                  </div>
+                  {message.type === 'user' ? (
+                    <div className="whitespace-pre-line">{message.content}</div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  )}
 
                   {message.insightResult && (
                     <div className="mt-4">

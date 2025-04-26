@@ -77,7 +77,6 @@ Your task is to:
 IMPORTANT REQUIREMENTS:
 - Only use measures and dimensions that actually exist in the provided metadata
 - Use the exact name properties (not titles) for measures and dimensions
-- Include at least one measure
 - Include dimensions if they help answer the question
 - Add appropriate filters if the user's question mentions specific conditions
 - Status are always UPPER_CASE
