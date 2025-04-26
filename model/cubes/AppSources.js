@@ -1,5 +1,5 @@
 cube('AppSources', {
-  sqlTable: `fact_app_sources`,
+  sqlTable: `dim_app_sources`,
   shown: false,
 
   joins: {

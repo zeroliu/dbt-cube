@@ -1,5 +1,5 @@
 cube('Accounts', {
-  sqlTable: `fct_accounts`,
+  sqlTable: `dim_accounts`,
   shown: false,
 
   joins: {

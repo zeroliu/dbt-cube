@@ -1,9 +1,8 @@
 import sqlite3
 import pandas as pd
 from faker import Faker
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
-import uuid
 
 fake = Faker()
 
@@ -302,11 +301,11 @@ if __name__ == '__main__':
     # Save to SQLite
     departments_df.to_sql('dim_departments', conn, if_exists='replace', index=False)
     identities_df.to_sql('dim_identities', conn, if_exists='replace', index=False)
-    applications_df.to_sql('fact_applications', conn, if_exists='replace', index=False)
+    applications_df.to_sql('dim_applications', conn, if_exists='replace', index=False)
     app_instances_df.to_sql('dim_domain_applications', conn, if_exists='replace', index=False)
-    app_sources_df.to_sql('fact_app_sources', conn, if_exists='replace', index=False)
-    accounts_df.to_sql('fct_accounts', conn, if_exists='replace', index=False)
-    licenses_df.to_sql('fct_licenses', conn, if_exists='replace', index=False)
+    app_sources_df.to_sql('dim_app_sources', conn, if_exists='replace', index=False)
+    accounts_df.to_sql('dim_accounts', conn, if_exists='replace', index=False)
+    licenses_df.to_sql('dim_licenses', conn, if_exists='replace', index=False)
     dates_df.to_sql('dim_dates', conn, if_exists='replace', index=False) # Save date dimension
 
     print("SaaS management sample data generated successfully!")

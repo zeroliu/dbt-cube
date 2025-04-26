@@ -1,13 +1,22 @@
 cube('AppInstanceSnapshots', {
-  sqlTable: `fact_app_instance_snapshots`,
-  title: 'App Instances',
+  shown: false,
+  sql: `
+    SELECT
+      a.*,
+      d.full_date as snapshot_date
+    FROM dim_dates d
+    JOIN dim_app_instance_snapshots a
+      ON d.full_date >= a.effective_from
+      AND d.full_date < a.effective_to
+  `,
+  title: 'App Instance Snapshots',
   joins: {
     Applications: {
       sql: `${CUBE}.app_id = ${Applications}.id`,
       relationship: `many_to_one`,
     },
     AccountSnapshots: {
-      sql: `${CUBE}.instance_id = ${AccountSnapshots}.app_instance_id`,
+      sql: `${CUBE}.instance_id = ${AccountSnapshots}.app_instance_id AND ${CUBE}.snapshot_date = ${AccountSnapshots}.snapshot_date`,
       relationship: `one_to_many`,
     },
   },
@@ -15,23 +24,6 @@ cube('AppInstanceSnapshots', {
   measures: {
     count: {
       type: `count`,
-      drillMembers: [instanceId, effectiveFrom, effectiveTo, instanceStatus],
-    },
-    currentCount: {
-      type: `count`,
-      filters: [
-        {
-          sql: `${CUBE}.is_current = 1`,
-        },
-      ],
-    },
-    lastWeekCount: {
-      type: `count`,
-      filters: [
-        {
-          sql: `(${CUBE}.effective_from <= date('now', '-7 days') AND (${CUBE}.effective_to > date('now', '-7 days') OR ${CUBE}.effective_to IS NULL))`,
-        },
-      ],
     },
   },
 
@@ -50,21 +42,6 @@ cube('AppInstanceSnapshots', {
       sql: `app_id`,
       type: `number`,
       shown: false,
-    },
-    effectiveFrom: {
-      sql: `effective_from`,
-      type: `time`,
-      title: `Effective From`,
-    },
-    effectiveTo: {
-      sql: `effective_to`,
-      type: `time`,
-      title: `Effective To`,
-    },
-    isCurrent: {
-      sql: `is_current`,
-      type: `boolean`,
-      title: `Is Current Record`,
     },
     instanceStatus: {
       sql: `instance_status`,
@@ -91,11 +68,12 @@ cube('AppInstanceSnapshots', {
       type: `string`,
       title: `App Category`,
     },
-  },
-
-  segments: {
-    currentRecords: {
-      sql: `${CUBE}.is_current = 1`,
+    snapshotDate: {
+      sql: `snapshot_date`,
+      type: `time`,
+      title: `Snapshot Date`,
     },
   },
+
+  segments: {},
 });

@@ -1,5 +1,5 @@
 cube('Licenses', {
-  sqlTable: `fct_licenses`,
+  sqlTable: `dim_licenses`,
   shown: false,
   joins: {
     Accounts: {

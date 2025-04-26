@@ -4,7 +4,14 @@ import {useState, useEffect} from 'react';
 import Link from 'next/link';
 import {MetricConfig} from '@/lib/cube-client';
 import {Button} from '@/components/ui/button';
-import {ArrowUpRight, ArrowDownRight, Pencil, Trash2, Bell} from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Pencil,
+  Trash2,
+  Bell,
+  HelpCircle,
+} from 'lucide-react';
 
 export default function MetricsPage() {
   const [metrics, setMetrics] = useState<MetricConfig[]>([]);
@@ -45,6 +52,12 @@ export default function MetricsPage() {
           <Link href="/metrics/new-ai">
             <Button variant="outline">Create with AI</Button>
           </Link>
+          <Link href="/metrics/question">
+            <Button variant="outline" className="flex items-center">
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Ask a Question
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -54,9 +67,17 @@ export default function MetricsPage() {
           <p className="text-gray-500 mb-4">
             Create your first metric to start building insights
           </p>
-          <Link href="/metrics/new">
-            <Button>Create New Metric</Button>
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/metrics/new">
+              <Button>Create New Metric</Button>
+            </Link>
+            <Link href="/metrics/question">
+              <Button variant="outline" className="flex items-center">
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Ask a Question
+              </Button>
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4">

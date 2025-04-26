@@ -1,6 +1,6 @@
 cube('Applications', {
+  sqlTable: `dim_applications`,
   shown: false,
-  sqlTable: `fact_applications`,
 
   joins: {
     AppInstances: {

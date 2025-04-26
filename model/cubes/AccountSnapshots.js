@@ -1,6 +1,15 @@
 cube('AccountSnapshots', {
-  sqlTable: `fact_account_snapshots`,
-  title: 'Accounts',
+  shown: false,
+  sql: `
+    SELECT
+      a.*,
+      d.full_date as snapshot_date
+    FROM dim_dates d
+    JOIN dim_account_snapshots a
+      ON d.full_date >= a.effective_from
+      AND d.full_date < a.effective_to
+  `,
+  title: 'Account Snapshots',
 
   joins: {
     Accounts: {
@@ -8,11 +17,11 @@ cube('AccountSnapshots', {
       relationship: `many_to_one`,
     },
     AppInstanceSnapshots: {
-      sql: `${CUBE}.app_instance_id = ${AppInstanceSnapshots}.instance_id`,
+      sql: `${CUBE}.app_instance_id = ${AppInstanceSnapshots}.instance_id AND ${CUBE}.snapshot_date = ${AppInstanceSnapshots}.snapshot_date`,
       relationship: `many_to_one`,
     },
     IdentitySnapshots: {
-      sql: `${CUBE}.user_id = ${IdentitySnapshots}.identity_id`,
+      sql: `${CUBE}.user_id = ${IdentitySnapshots}.identity_id AND ${CUBE}.snapshot_date = ${IdentitySnapshots}.snapshot_date`,
       relationship: `many_to_one`,
     },
   },
@@ -26,22 +35,6 @@ cube('AccountSnapshots', {
         IdentitySnapshots.fullName,
         AppInstanceSnapshots.appName,
         AppInstanceSnapshots.appCategory,
-      ],
-    },
-    currentCount: {
-      type: `count`,
-      filters: [
-        {
-          sql: `${CUBE}.is_current = 1`,
-        },
-      ],
-    },
-    lastWeekCount: {
-      type: `count`,
-      filters: [
-        {
-          sql: `(${CUBE}.effective_from <= date('now', '-7 days') AND (${CUBE}.effective_to > date('now', '-7 days') OR ${CUBE}.effective_to IS NULL))`,
-        },
       ],
     },
   },
@@ -67,20 +60,10 @@ cube('AccountSnapshots', {
       type: `number`,
       shown: false,
     },
-    effectiveFrom: {
-      sql: `effective_from`,
+    snapshotDate: {
+      sql: `snapshot_date`,
       type: `time`,
-      title: `Effective From`,
-    },
-    effectiveTo: {
-      sql: `effective_to`,
-      type: `time`,
-      title: `Effective To`,
-    },
-    isCurrent: {
-      sql: `is_current`,
-      type: `boolean`,
-      title: `Is Current Record`,
+      title: `Snapshot Date`,
     },
     accountStatus: {
       sql: `account_status`,
@@ -104,9 +87,5 @@ cube('AccountSnapshots', {
     },
   },
 
-  segments: {
-    currentRecords: {
-      sql: `${CUBE}.is_current = 1`,
-    },
-  },
+  segments: {},
 });
