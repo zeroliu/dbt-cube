@@ -11,6 +11,11 @@
   "dependencies": {
     "@cubejs-client/core": "^1.2.33",
     "@cubejs-client/react": "^1.2.33",
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.0.14",
+    "langchain": "^0.1.9",
+    "@langchain/community": "^0.0.27",
+    "@langchain/langgraph": "^0.2.0",
     "@radix-ui/react-checkbox": "^1.1.5",
     "@radix-ui/react-dialog": "^1.1.7",
     "@radix-ui/react-label": "^2.1.3",
@@ -30,7 +35,8 @@
     "recharts": "^2.15.2",
     "tailwind-merge": "^3.2.0",
     "tw-animate-css": "^1.2.5",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -44,5 +50,8 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@langchain/core": "^0.3.0"
   }
 }
